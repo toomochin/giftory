@@ -1,0 +1,15 @@
+{
+  "name": "giftory-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "vite": "^8.0.0",
+    "@vitejs/plugin-vue": "^6.0.0"
+  }
+}

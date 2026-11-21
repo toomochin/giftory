@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:${GIFTORY_PORT:-8080}:8000"
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "false"
+      APP_URL: "http://localhost:${GIFTORY_PORT:-8080}"
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /var/lib/giftory/database.sqlite
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+    volumes:
+      - data:/var/lib/giftory
+      - photos:/app/storage/app/private
+
+volumes:
+  data:
+  photos:

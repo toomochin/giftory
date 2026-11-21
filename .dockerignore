@@ -1,0 +1,14 @@
+.git
+.agents
+.codex
+.aws
+.env*
+!.env.example
+.laravel-scaffold
+vendor
+frontend/node_modules
+public/app
+database/*.sqlite*
+storage/app/private/*
+storage/logs/*
+bootstrap/cache/*.php
