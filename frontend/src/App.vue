@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import HistoryPagination from './HistoryPagination.vue'
 
 const user = ref(null)
@@ -9,11 +9,14 @@ const giftPickerReturn = ref('home')
 const registering = ref(false)
 const credentials = ref({})
 const recipients = ref([])
+const giverNames = computed(() => [...new Set(recipients.value.map(record => record.name))])
 const recipient = ref(null)
 const history = ref(null)
 const historyDirection = ref('')
 const gift = ref(null)
 const draft = ref({})
+const newGiver = ref(null)
+const newGiverName = ref(null)
 const photo = ref(null)
 const members = ref([])
 const invitation = ref(null)
@@ -122,10 +125,25 @@ async function openGift(id) {
 }
 
 async function giftForm(record = null) {
+  recipients.value = await api('/recipients')
+  newGiver.value = null
   const fields = ['name', 'gifted_on', 'giver', 'reaction', 'price', 'event', 'direction']
   draft.value = record ? Object.fromEntries(fields.map(field => [field, record[field]])) : { event: null, direction: 'given', giver: '' }
   photo.value = null
   screen.value = record ? 'gift-edit' : 'gift-new'
+}
+
+async function showGiverForm() {
+  newGiver.value = { name: '', relationship: '' }
+  await nextTick()
+  newGiverName.value?.focus()
+}
+
+async function addGiver() {
+  const record = await api('/recipients', 'POST', newGiver.value)
+  recipients.value.push(record)
+  draft.value.giver = record.name
+  newGiver.value = null
 }
 
 function photoForm() {
@@ -366,7 +384,8 @@ onMounted(async () => {
 
         <section v-if="['gift-new', 'gift-edit'].includes(screen)">
           <h1>{{ screen === 'gift-new' ? '贈り物を記録' : '贈り物を編集' }}</h1>
-          <form @submit.prevent="run(saveGift)">
+          <form v-if="newGiver" id="new-giver-form" @submit.prevent="run(addGiver)"></form>
+          <form @submit.prevent="!newGiver && run(saveGift)">
             <label>品物名 <input v-model="draft.name" maxlength="255" required></label>
             <fieldset class="event-picker">
               <legend>贈り物の区分</legend>
@@ -378,7 +397,27 @@ onMounted(async () => {
               </div>
             </fieldset>
             <label>{{ draft.direction === 'received' ? 'もらった日' : '贈った日' }} <input v-model="draft.gifted_on" type="date" required></label>
-            <label>贈った人 <input v-model="draft.giver" maxlength="255" required></label>
+            <label>贈った人
+              <select v-model="draft.giver" required>
+                <option value="" disabled>登録済みの相手を選択</option>
+                <option v-if="screen === 'gift-edit' && gift.giver && !giverNames.includes(gift.giver)" :value="gift.giver">{{ gift.giver }}（登録済みの値）</option>
+                <option v-for="name in giverNames" :key="name" :value="name">{{ name }}</option>
+              </select>
+            </label>
+            <button v-if="!newGiver" type="button" :disabled="busy" @click="showGiverForm">相手を追加</button>
+            <fieldset v-if="newGiver" class="inline-giver">
+              <legend>相手を追加</legend>
+              <label>名前またはニックネーム
+                <input ref="newGiverName" v-model="newGiver.name" form="new-giver-form" maxlength="255" required>
+              </label>
+              <label>関係性
+                <input v-model="newGiver.relationship" form="new-giver-form" maxlength="255" required>
+              </label>
+              <div class="actions">
+                <button type="submit" form="new-giver-form" class="primary" :disabled="busy">登録して選択</button>
+                <button type="button" :disabled="busy" @click="newGiver = null">キャンセル</button>
+              </div>
+            </fieldset>
             <label>反応（任意） <textarea v-model="draft.reaction" maxlength="4000"></textarea></label>
             <label>価格（任意、円） <input v-model="draft.price" type="number" min="0" max="4294967295" step="1"></label>
             <fieldset class="event-picker">
@@ -401,7 +440,7 @@ onMounted(async () => {
             <img v-if="screen === 'gift-edit' && gift.has_photo" :src="'/api' + giftPath + '/photo'" alt="編集中の贈り物の写真">
             <label>写真（任意、JPEG／PNG、2 MiB以下） <input type="file" accept="image/jpeg,image/png" @change="photo = $event.target.files[0] || null"></label>
             <div class="actions">
-              <button class="primary" :disabled="busy">保存</button>
+              <button class="primary" :disabled="busy || !!newGiver">保存</button>
               <button type="button" :disabled="busy" @click="screen = screen === 'gift-edit' ? 'gift' : 'recipient'">戻る</button>
               <button v-if="screen === 'gift-edit' && gift.has_photo" type="button" :disabled="busy" @click="confirmAction('写真を削除しますか？', async () => { await api(giftPath + '/photo', 'DELETE'); gift = await api(giftPath) })">写真を削除</button>
             </div>
