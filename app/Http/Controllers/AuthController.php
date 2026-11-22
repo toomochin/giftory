@@ -6,8 +6,10 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class AuthController extends Controller
 {
@@ -37,6 +39,13 @@ class AuthController extends Controller
         $user = User::create($data);
         Auth::login($user);
         $request->session()->regenerate();
+
+        try {
+            Mail::raw("Giftoryへのご登録ありがとうございます。\n\nログイン: ".config('app.url'), fn ($message) => $message
+                ->to($user->email)->subject('Giftoryへようこそ'));
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
+        }
 
         return response()->json($user->only('id', 'name', 'email'), 201);
     }

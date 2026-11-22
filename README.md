@@ -13,6 +13,18 @@ docker compose logs -f app
 
 マイグレーションが完了したら [http://localhost:8080](http://localhost:8080) を開きます。ポートを変える場合は `GIFTORY_PORT=8081 docker compose up -d --build` を使います。Docker側のSQLite、アプリキー、写真は名前付きボリュームに保存され、ホストで起動したGiftoryのデータとは別です。停止は `docker compose down` で行えます。
 
+## Mailpit
+
+Docker版と一緒にMailpitが起動します。開発用メールは [http://localhost:8025](http://localhost:8025) で確認できます。受信画面のポートは `MAILPIT_PORT` で変更できます。
+
+手動でテストメールを送るには、以下を実行します。
+
+```sh
+docker compose exec -T app php artisan tinker --execute='Illuminate\Support\Facades\Mail::raw("Giftory mail test", fn ($message) => $message->to("demo-owner@giftory.test")->subject("Giftory SMTP test"));'
+```
+
+会員登録時はウェルカムメールが届きます。共有管理で宛先を入力して招待を発行すると、招待リンク付きメールが届きます。宛先を空欄にするとリンクだけが発行されます。
+
 ## ローカル起動
 
 PHP 8.3以上、Composer、Node.js 24.12以上、PHPの `pdo_sqlite` 拡張を用意します。
@@ -50,7 +62,7 @@ docker compose exec -T app php artisan db:seed --class=DemoSeeder
 Docker内でテストする場合は、テスト用の環境とインメモリDBを明示します。
 
 ```sh
-docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=:memory: app php artisan test --fail-on-warning
+docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=:memory: -e MAIL_MAILER=array app php artisan test --fail-on-warning
 ```
 
 

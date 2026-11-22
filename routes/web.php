@@ -26,7 +26,7 @@ Route::prefix('api')->group(function () {
         Route::delete('/recipients/{recipient}/members/{user}', [SharingController::class, 'remove']);
         Route::delete('/recipients/{recipient}/membership', [SharingController::class, 'leave']);
         Route::get('/recipients/{recipient}/invitation', [SharingController::class, 'current']);
-        Route::post('/recipients/{recipient}/invitation', [SharingController::class, 'issue']);
+        Route::post('/recipients/{recipient}/invitation', [SharingController::class, 'issue'])->middleware('throttle:20,1');
         Route::delete('/recipients/{recipient}/invitation', [SharingController::class, 'revoke']);
         Route::post('/invitations/accept', [SharingController::class, 'accept'])->middleware('throttle:20,1');
         Route::get('/me', [AuthController::class, 'me']);

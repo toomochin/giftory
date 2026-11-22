@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class SharingController extends Controller
 {
@@ -47,7 +49,11 @@ class SharingController extends Controller
 
     public function issue(Request $request, Recipient $recipient)
     {
-        return $this->withRecipient($recipient, function (Recipient $locked) use ($request) {
+        $recipient->checkOwner($request->user());
+        $email = $request->validate(['email' => ['nullable', 'string', 'email', 'max:255']], [
+            'email.email' => '正しい招待先メールアドレスを入力してください。',
+        ])['email'] ?? null;
+        $issued = $this->withRecipient($recipient, function (Recipient $locked) use ($request) {
             $locked->checkOwner($request->user());
             $now = now();
             $expires = $now->copy()->addDays(7);
@@ -61,9 +67,23 @@ class SharingController extends Controller
                 'updated_at' => $now,
             ]);
 
-            return response()->json(['token' => $token, 'expires_at' => $expires], 201)
-                ->header('Cache-Control', 'private, no-store');
+            return ['token' => $token, 'expires_at' => $expires];
         });
+
+        $issued['email_sent'] = null;
+        if ($email !== null) {
+            $link = rtrim(config('app.url'), '/').'/#invite='.$issued['token'];
+            try {
+                Mail::raw("Giftoryの共有履歴に招待されました。\nリンクを開き、ログイン後に参加してください。\n\n{$link}\n\n有効期限は発行から7日間です。", fn ($message) => $message
+                    ->to($email)->subject('Giftoryの共有招待'));
+                $issued['email_sent'] = true;
+            } catch (TransportExceptionInterface $exception) {
+                report($exception);
+                $issued['email_sent'] = false;
+            }
+        }
+
+        return response()->json($issued, 201)->header('Cache-Control', 'private, no-store');
     }
 
     public function revoke(Request $request, Recipient $recipient)

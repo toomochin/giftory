@@ -11,10 +11,25 @@ services:
       DB_DATABASE: /var/lib/giftory/database.sqlite
       SESSION_DRIVER: database
       CACHE_STORE: database
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_FROM_ADDRESS: giftory@giftory.test
+      MAIL_FROM_NAME: Giftory
     volumes:
       - data:/var/lib/giftory
       - photos:/app/storage/app/private
 
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    volumes:
+      - mailpit:/data
+
 volumes:
+  mailpit:
   data:
   photos:

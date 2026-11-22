@@ -15,6 +15,7 @@ const photo = ref(null)
 const members = ref([])
 const invitation = ref(null)
 const inviteLink = ref('')
+const inviteEmail = ref('')
 const preview = ref(null)
 const token = ref(new URLSearchParams(location.hash.slice(1)).get('invite'))
 const errors = ref([])
@@ -136,11 +137,12 @@ async function sharing() {
   members.value = people
   invitation.value = active
   inviteLink.value = ''
+  inviteEmail.value = ''
   screen.value = 'sharing'
 }
 
 async function issue() {
-  const issued = await api(recipientPath.value + '/invitation', 'POST')
+  const issued = await api(recipientPath.value + '/invitation', 'POST', { email: inviteEmail.value.trim() || null })
   invitation.value = issued
   inviteLink.value = location.origin + '/#invite=' + encodeURIComponent(issued.token)
 }
@@ -312,6 +314,9 @@ onMounted(async () => {
         <section v-if="screen === 'sharing'">
           <button :disabled="busy" @click="screen = 'recipient'; inviteLink = ''">履歴へ戻る</button>
           <h1>{{ recipient.name }}の共有管理</h1>
+          <label>招待先メールアドレス（任意） <input v-model="inviteEmail" type="email" maxlength="255" :disabled="busy"></label>
+          <p v-if="inviteLink && invitation?.email_sent === true" role="status">招待メールを送信しました。</p>
+          <p v-if="inviteLink && invitation?.email_sent === false" class="error" role="alert">メールを送信できませんでした。下の招待リンクをコピーして共有できます。</p>
           <p v-if="invitation">招待の有効期限 {{ formatTime(invitation.expires_at) }}</p>
           <div class="actions">
             <button class="primary" :disabled="busy" @click="invitation ? confirmAction('以前の招待を無効にして再発行しますか？', issue) : run(issue)">{{ invitation ? '招待を再発行' : '招待を発行' }}</button>
