@@ -22,6 +22,7 @@ class SharingTest extends TestCase
             ->assertCreated()->json('id');
         $recipient = "/api/recipients/{$id}";
         $invitation = $recipient.'/invitation';
+        $this->getJson($invitation)->assertNoContent();
         $discarded = $this->postJson($invitation)->assertCreated()->json('token');
         $token = $this->postJson($invitation)->assertCreated()->json('token');
         $this->getJson($invitation)->assertOk()->assertJsonMissingPath('token');
@@ -79,6 +80,7 @@ class SharingTest extends TestCase
         $this->postJson('/api/invitations/preview', ['token' => $expired])->assertNotFound();
         $revoked = $this->postJson($invitation)->assertCreated()->json('token');
         $this->deleteJson($invitation)->assertNoContent();
+        $this->getJson($invitation)->assertNoContent();
         $this->actingAs(User::factory()->create());
         $this->postJson('/api/invitations/accept', ['token' => $expired])->assertNotFound();
         $this->postJson('/api/invitations/accept', ['token' => $revoked])->assertNotFound();

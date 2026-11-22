@@ -44,7 +44,9 @@ class SharingController extends Controller
     {
         $recipient->checkOwner($request->user());
 
-        return response()->json($this->active()->where('recipient_id', $recipient->id)->first(['expires_at']));
+        $invitation = $this->active()->where('recipient_id', $recipient->id)->first(['expires_at']);
+
+        return $invitation ? response()->json($invitation) : response()->noContent();
     }
 
     public function issue(Request $request, Recipient $recipient)

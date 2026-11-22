@@ -135,7 +135,7 @@ async function sharing() {
     api(recipientPath.value + '/members'), api(recipientPath.value + '/invitation'),
   ])
   members.value = people
-  invitation.value = active
+  invitation.value = active?.expires_at ? active : null
   inviteLink.value = ''
   inviteEmail.value = ''
   screen.value = 'sharing'
