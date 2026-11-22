@@ -18,6 +18,7 @@ Route::prefix('api')->group(function () {
         Route::apiResource('recipients', RecipientController::class);
         Route::get('/recipients/{recipient}/gifts', [GiftController::class, 'index']);
         Route::post('/recipients/{recipient}/gifts', [GiftController::class, 'store']);
+        Route::get('/gifts', [GiftController::class, 'all']);
         Route::apiResource('gifts', GiftController::class)->only(['show', 'update', 'destroy']);
         Route::get('/gifts/{gift}/photo', [GiftController::class, 'photo']);
         Route::put('/gifts/{gift}/photo', [GiftController::class, 'replacePhoto']);

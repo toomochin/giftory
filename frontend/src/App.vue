@@ -5,11 +5,13 @@ import HistoryPagination from './HistoryPagination.vue'
 const user = ref(null)
 const ready = ref(false)
 const screen = ref('home')
+const giftPickerReturn = ref('home')
 const registering = ref(false)
 const credentials = ref({})
 const recipients = ref([])
 const recipient = ref(null)
 const history = ref(null)
+const historyDirection = ref('')
 const gift = ref(null)
 const draft = ref({})
 const photo = ref(null)
@@ -18,6 +20,7 @@ const invitation = ref(null)
 const inviteLink = ref('')
 const inviteEmail = ref('')
 const yen = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' })
+const directions = { given: '贈った', received: 'もらった' }
 const events = ['誕生日', '記念日', 'クリスマス', '母の日', '父の日', 'バレンタイン', 'ホワイトデー', 'お祝い', 'お礼', 'お土産', 'その他']
 const preview = ref(null)
 const token = ref(new URLSearchParams(location.hash.slice(1)).get('invite'))
@@ -74,13 +77,31 @@ async function home() {
   screen.value = 'home'
 }
 
-async function openRecipient(id, page = 1) {
+async function chooseGiftRecipient() {
+  recipients.value = await api('/recipients')
+  giftPickerReturn.value = screen.value
+  screen.value = 'gift-recipient'
+}
+
+function openRecipient(id) {
+  return openHistory(id)
+}
+
+async function openHistory(id = null, page = 1, direction = '') {
+  const path = id === null ? '/gifts' : '/recipients/' + id + '/gifts'
+  const params = new URLSearchParams({ page })
+  if (direction) params.set('direction', direction)
   const [record, listings] = await Promise.all([
-    api('/recipients/' + id), api('/recipients/' + id + '/gifts?page=' + page),
+    id === null ? null : api('/recipients/' + id), api(path + '?' + params),
   ])
   recipient.value = record
   history.value = listings
-  screen.value = 'recipient'
+  historyDirection.value = direction
+  screen.value = id === null ? 'all-history' : 'recipient'
+}
+
+function refreshHistory(page = history.value.current_page, direction = historyDirection.value) {
+  return openHistory(recipient.value?.id ?? null, page, direction)
 }
 
 function recipientForm(record = null) {
@@ -100,10 +121,9 @@ async function openGift(id) {
   screen.value = 'gift'
 }
 
-function giftForm(record = null) {
-  errors.value = []
-  const fields = ['name', 'gifted_on', 'giver', 'reaction', 'price', 'event']
-  draft.value = record ? Object.fromEntries(fields.map(field => [field, record[field]])) : { event: null }
+async function giftForm(record = null) {
+  const fields = ['name', 'gifted_on', 'giver', 'reaction', 'price', 'event', 'direction']
+  draft.value = record ? Object.fromEntries(fields.map(field => [field, record[field]])) : { event: null, direction: 'given', giver: '' }
   photo.value = null
   screen.value = record ? 'gift-edit' : 'gift-new'
 }
@@ -165,7 +185,7 @@ async function accept() {
 async function authenticate() {
   user.value = await api(registering.value ? '/register' : '/login', 'POST', credentials.value)
   credentials.value = {}
-  if (!token.value) await home()
+  if (!token.value) await openHistory()
 }
 
 function confirmAction(message, action) {
@@ -184,7 +204,7 @@ onMounted(async () => {
       if (error.status !== 401) throw error
     }
     if (token.value) preview.value = await api('/invitations/preview', 'POST', { token: token.value })
-    else if (user.value) await home()
+    else if (user.value) await openHistory()
   })
   ready.value = true
 })
@@ -193,13 +213,23 @@ onMounted(async () => {
 <template>
   <header>
     <strong>Giftory</strong>
-    <button v-if="user" :disabled="busy" @click="run(async () => {
-      await api('/logout', 'POST')
-      user = null
-      recipient = null
-      gift = null
-      screen = 'home'
-    })">ログアウト</button>
+    <nav v-if="user" class="header-actions" aria-label="メインメニュー">
+      <template v-if="!token">
+        <button type="button" class="header-gift-button" aria-label="贈り物を記録" title="贈り物を記録"
+          :disabled="busy || screen === 'gift-recipient'" @click="run(() => screen === 'recipient' ? giftForm() : chooseGiftRecipient())">
+          <span class="header-gift-icon" aria-hidden="true"><span></span></span>
+        </button>
+        <button type="button" :disabled="busy" @click="run(home)">相手一覧へ</button>
+        <button type="button" :disabled="busy" @click="run(() => openHistory())">すべての履歴</button>
+      </template>
+      <button type="button" :disabled="busy" @click="run(async () => {
+        await api('/logout', 'POST')
+        user = null
+        recipient = null
+        gift = null
+        screen = 'home'
+      })">ログアウト</button>
+    </nav>
   </header>
   <main :aria-busy="busy">
     <ul v-if="errors.length" class="error" role="alert"><li v-for="message in errors" :key="message">{{ message }}</li></ul>
@@ -211,7 +241,7 @@ onMounted(async () => {
         <p v-if="preview">有効期限 {{ formatTime(preview.expires_at) }}</p>
         <div class="actions">
           <button v-if="preview && user" class="primary" :disabled="busy" @click="run(accept)">参加する</button>
-          <button :disabled="busy" @click="run(async () => { clearInvite(); if (user) await home() })">招待を閉じる</button>
+          <button :disabled="busy" @click="run(async () => { clearInvite(); if (user) await openHistory() })">招待を閉じる</button>
         </div>
       </section>
 
@@ -232,7 +262,9 @@ onMounted(async () => {
       <template v-else-if="!token">
         <template v-if="screen === 'home'">
           <h1>贈る相手</h1>
-          <button class="primary" :disabled="busy" @click="recipientForm()">相手を登録</button>
+          <div class="actions">
+            <button class="primary" :disabled="busy" @click="recipientForm()">相手を登録</button>
+          </div>
           <p v-if="!recipients.length">贈り物を記録する相手を登録してください。</p>
           <article v-for="record in recipients" :key="record.id">
             <button :disabled="busy" @click="run(() => openRecipient(record.id))">{{ record.name }}</button>
@@ -241,39 +273,63 @@ onMounted(async () => {
         </template>
 
         <template v-if="screen === 'recipient'">
-          <button :disabled="busy" @click="run(home)">相手一覧へ</button>
           <h1>{{ recipient.name }}</h1>
           <p class="note">{{ recipient.relationship }}<template v-if="recipient.preferences"> · {{ recipient.preferences }}</template></p>
           <div class="actions">
-            <button class="primary" :disabled="busy" @click="giftForm()">贈り物を記録</button>
             <button v-if="owner" :disabled="busy" @click="recipientForm(recipient)">相手を編集</button>
             <button v-if="owner" :disabled="busy" @click="run(sharing)">共有管理</button>
             <button v-else :disabled="busy" @click="screen = 'leave'">共有から退出</button>
           </div>
-          <h2>贈り物の履歴</h2>
+        </template>
+
+        <template v-if="screen === 'recipient' || screen === 'all-history'">
+          <h1 v-if="screen === 'all-history'">すべての履歴</h1>
+          <h2 v-else>贈り物の履歴</h2>
+          <div class="actions" role="group" aria-label="履歴の表示">
+            <button type="button" :class="{ primary: !historyDirection }" :aria-pressed="!historyDirection"
+              :disabled="busy" @click="run(() => refreshHistory(1, ''))">すべて</button>
+            <button v-for="(label, value) in directions" :key="value" type="button"
+              :class="{ primary: historyDirection === value }" :aria-pressed="historyDirection === value"
+              :disabled="busy" @click="run(() => refreshHistory(1, value))">{{ label }}</button>
+          </div>
           <HistoryPagination :current="history.current_page" :last="history.last_page" :busy="busy"
-            label="履歴ページの選択（上）" @change="page => run(() => openRecipient(recipient.id, page))" />
-          <p v-if="!history.data.length">贈り物はまだ記録されていません。</p>
+            label="履歴ページの選択（上）" @change="page => run(() => refreshHistory(page))" />
+          <p v-if="!history.data.length">{{ historyDirection ? 'この区分の記録はありません。' : '贈り物はまだ記録されていません。' }}</p>
           <button v-for="record in history.data" :key="record.id" type="button" class="history-card"
             :disabled="busy" @click="run(() => openGift(record.id))">
-            <span v-if="record.has_photo" class="history-card-media">
-              <img class="history-card-photo" :src="'/api/gifts/' + record.id + '/photo'"
+            <span class="history-card-media">
+              <img v-if="record.has_photo" class="history-card-photo" :src="'/api/gifts/' + record.id + '/photo'"
                 alt="" width="80" height="80" loading="lazy" decoding="async">
               <span v-if="record.price != null" class="history-card-price">{{ yen.format(record.price) }}</span>
             </span>
             <span class="history-card-content">
-              <strong>{{ record.name }}</strong>
+              <strong class="history-card-title">{{ record.name }}</strong>
+              <time class="history-card-date" :datetime="record.gifted_on">{{ record.gifted_on }}</time>
               <span class="history-card-meta">
-                <time :datetime="record.gifted_on">{{ record.gifted_on }}</time>
+                <span class="history-card-direction" :class="{ received: record.direction === 'received' }">{{ directions[record.direction] }}</span>
                 <span v-if="record.event" class="history-card-event">{{ record.event }}</span>
-                <span v-if="!record.has_photo && record.price != null">{{ yen.format(record.price) }}</span>
+                <span class="history-card-recipient">{{ record.recipient?.name ?? recipient?.name }}</span>
               </span>
-              <span class="note">{{ record.reaction || '反応は未記入' }}</span>
+              <span class="note history-card-reaction" :class="{ empty: !record.reaction }">{{ record.reaction || '反応は未記入' }}</span>
             </span>
           </button>
           <HistoryPagination :current="history.current_page" :last="history.last_page" :busy="busy"
-            label="履歴ページの選択（下）" @change="page => run(() => openRecipient(recipient.id, page))" />
+            label="履歴ページの選択（下）" @change="page => run(() => refreshHistory(page))" />
         </template>
+
+        <section v-if="screen === 'gift-recipient'">
+          <button type="button" :disabled="busy" @click="screen = giftPickerReturn">戻る</button>
+          <h1>記録する相手を選ぶ</h1>
+          <p v-if="!recipients.length">贈り物を記録する相手を先に登録してください。</p>
+          <button v-if="!recipients.length" class="primary" :disabled="busy" @click="recipientForm()">相手を登録</button>
+          <article v-for="record in recipients" :key="record.id">
+            <button type="button" :disabled="busy" @click="run(async () => {
+              await openRecipient(record.id)
+              await giftForm()
+            })">{{ record.name }}</button>
+            <small> {{ record.relationship }}</small>
+          </article>
+        </section>
 
         <section v-if="['recipient-new', 'recipient-edit'].includes(screen)">
           <h1>{{ screen === 'recipient-new' ? '相手を登録' : '相手を編集' }}</h1>
@@ -290,10 +346,11 @@ onMounted(async () => {
         </section>
 
         <section v-if="screen === 'gift'">
-          <button :disabled="busy" @click="run(() => openRecipient(recipient.id, history.current_page))">履歴へ戻る</button>
+          <button :disabled="busy" @click="run(() => refreshHistory())">履歴へ戻る</button>
           <h1>{{ gift.name }}</h1>
           <dl>
-            <dt>贈った日</dt><dd>{{ gift.gifted_on }}</dd>
+            <dt>区分</dt><dd>{{ directions[gift.direction] }}</dd>
+            <dt>{{ gift.direction === 'received' ? 'もらった日' : '贈った日' }}</dt><dd>{{ gift.gifted_on }}</dd>
             <dt>贈った人</dt><dd>{{ gift.giver }}</dd>
             <dt>登録者</dt><dd>{{ gift.recorder?.name }}</dd>
             <template v-if="gift.event"><dt>イベント</dt><dd>{{ gift.event }}</dd></template>
@@ -302,8 +359,8 @@ onMounted(async () => {
           </dl>
           <img v-if="gift.has_photo" :src="'/api' + giftPath + '/photo?updated=' + encodeURIComponent(gift.updated_at)" :alt="gift.name + 'の写真'">
           <div v-if="editor" class="actions">
-            <button :disabled="busy" @click="giftForm(gift)">編集</button>
-            <button :disabled="busy" @click="confirmAction('この贈り物の記録を削除しますか？', async () => { await api(giftPath, 'DELETE'); await openRecipient(recipient.id) })">削除</button>
+            <button :disabled="busy" @click="run(() => giftForm(gift))">編集</button>
+            <button :disabled="busy" @click="confirmAction('この贈り物の記録を削除しますか？', async () => { await api(giftPath, 'DELETE'); await refreshHistory(1) })">削除</button>
           </div>
         </section>
 
@@ -311,7 +368,16 @@ onMounted(async () => {
           <h1>{{ screen === 'gift-new' ? '贈り物を記録' : '贈り物を編集' }}</h1>
           <form @submit.prevent="run(saveGift)">
             <label>品物名 <input v-model="draft.name" maxlength="255" required></label>
-            <label>贈った日 <input v-model="draft.gifted_on" type="date" required></label>
+            <fieldset class="event-picker">
+              <legend>贈り物の区分</legend>
+              <div class="event-options">
+                <label v-for="(label, value) in directions" :key="value" class="event-option direction-option" :class="value">
+                  <input v-model="draft.direction" type="radio" name="gift-direction" :value="value" required>
+                  <span>{{ label }}</span>
+                </label>
+              </div>
+            </fieldset>
+            <label>{{ draft.direction === 'received' ? 'もらった日' : '贈った日' }} <input v-model="draft.gifted_on" type="date" required></label>
             <label>贈った人 <input v-model="draft.giver" maxlength="255" required></label>
             <label>反応（任意） <textarea v-model="draft.reaction" maxlength="4000"></textarea></label>
             <label>価格（任意、円） <input v-model="draft.price" type="number" min="0" max="4294967295" step="1"></label>

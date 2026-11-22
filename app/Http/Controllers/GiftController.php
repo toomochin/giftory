@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Gift;
 use App\Models\Recipient;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -14,8 +15,26 @@ class GiftController extends Controller
     {
         $recipient->checkAccess($request->user());
 
-        return $recipient->gifts()
-            ->select('id', 'recipient_id', 'name', 'gifted_on', 'reaction', 'event', 'price')
+        return $this->history($request, Gift::query()->whereBelongsTo($recipient));
+    }
+
+    public function all(Request $request)
+    {
+        $userId = $request->user()->id;
+        $query = Gift::query()->whereHas('recipient', function (Builder $query) use ($userId) {
+            $query->where('owner_id', $userId)->orWhereHas('members', fn (Builder $members) => $members->whereKey($userId));
+        })->with('recipient:id,name');
+
+        return $this->history($request, $query);
+    }
+
+    private function history(Request $request, Builder $query)
+    {
+        $direction = $request->validate(['direction' => ['sometimes', 'required', 'in:given,received']])['direction'] ?? null;
+
+        return $query
+            ->when($direction, fn (Builder $query) => $query->where('direction', $direction))
+            ->select('id', 'recipient_id', 'name', 'gifted_on', 'reaction', 'event', 'price', 'direction')
             ->selectRaw('CASE WHEN photo_path IS NULL THEN 0 ELSE 1 END AS has_photo')
             ->withCasts(['has_photo' => 'boolean'])
             ->orderByDesc('gifted_on')->orderByDesc('id')->paginate(5);
@@ -169,11 +188,13 @@ class GiftController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'gifted_on' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.now('Asia/Tokyo')->toDateString()],
             'giver' => ['required', 'string', 'max:255'],
+            'direction' => ['sometimes', 'required', 'in:given,received'],
             'reaction' => ['nullable', 'string', 'max:4000'],
             'price' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
             'event' => ['nullable', 'string', 'max:255'],
         ], [
             'name.required' => '品物名を入力してください。',
+            'direction.in' => '「贈った」または「もらった」を選んでください。',
             'giver.required' => '贈った人を入力してください。',
             'gifted_on.required' => '贈った日を入力してください。',
             'gifted_on.date_format' => '贈った日を年月日で入力してください。',

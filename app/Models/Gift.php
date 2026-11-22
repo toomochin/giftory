@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Gift extends Model
 {
-    protected $fillable = ['name', 'gifted_on', 'giver', 'reaction', 'price', 'event'];
+    protected $fillable = ['name', 'gifted_on', 'giver', 'reaction', 'price', 'event', 'direction'];
+
+    protected $attributes = ['direction' => 'given'];
 
     protected $hidden = ['photo_path'];
 
