@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import HistoryPagination from './HistoryPagination.vue'
 
 const user = ref(null)
 const ready = ref(false)
@@ -16,6 +17,8 @@ const members = ref([])
 const invitation = ref(null)
 const inviteLink = ref('')
 const inviteEmail = ref('')
+const yen = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' })
+const events = ['誕生日', '記念日', 'クリスマス', '母の日', '父の日', 'バレンタイン', 'ホワイトデー', 'お祝い', 'お礼', 'お土産', 'その他']
 const preview = ref(null)
 const token = ref(new URLSearchParams(location.hash.slice(1)).get('invite'))
 const errors = ref([])
@@ -100,7 +103,7 @@ async function openGift(id) {
 function giftForm(record = null) {
   errors.value = []
   const fields = ['name', 'gifted_on', 'giver', 'reaction', 'price', 'event']
-  draft.value = record ? Object.fromEntries(fields.map(field => [field, record[field]])) : {}
+  draft.value = record ? Object.fromEntries(fields.map(field => [field, record[field]])) : { event: null }
   photo.value = null
   screen.value = record ? 'gift-edit' : 'gift-new'
 }
@@ -248,16 +251,28 @@ onMounted(async () => {
             <button v-else :disabled="busy" @click="screen = 'leave'">共有から退出</button>
           </div>
           <h2>贈り物の履歴</h2>
+          <HistoryPagination :current="history.current_page" :last="history.last_page" :busy="busy"
+            label="履歴ページの選択（上）" @change="page => run(() => openRecipient(recipient.id, page))" />
           <p v-if="!history.data.length">贈り物はまだ記録されていません。</p>
-          <article v-for="record in history.data" :key="record.id">
-            <time :datetime="record.gifted_on">{{ record.gifted_on }}</time>
-            <div><button :disabled="busy" @click="run(() => openGift(record.id))">{{ record.name }}</button></div>
-            <p class="note">{{ record.reaction || '反応は未記入' }}</p>
-          </article>
-          <div class="actions">
-            <button v-if="history.current_page > 1" :disabled="busy" @click="run(() => openRecipient(recipient.id, history.current_page - 1))">前へ</button>
-            <button v-if="history.next_page_url" :disabled="busy" @click="run(() => openRecipient(recipient.id, history.current_page + 1))">次へ</button>
-          </div>
+          <button v-for="record in history.data" :key="record.id" type="button" class="history-card"
+            :disabled="busy" @click="run(() => openGift(record.id))">
+            <span v-if="record.has_photo" class="history-card-media">
+              <img class="history-card-photo" :src="'/api/gifts/' + record.id + '/photo'"
+                alt="" width="80" height="80" loading="lazy" decoding="async">
+              <span v-if="record.price != null" class="history-card-price">{{ yen.format(record.price) }}</span>
+            </span>
+            <span class="history-card-content">
+              <strong>{{ record.name }}</strong>
+              <span class="history-card-meta">
+                <time :datetime="record.gifted_on">{{ record.gifted_on }}</time>
+                <span v-if="record.event" class="history-card-event">{{ record.event }}</span>
+                <span v-if="!record.has_photo && record.price != null">{{ yen.format(record.price) }}</span>
+              </span>
+              <span class="note">{{ record.reaction || '反応は未記入' }}</span>
+            </span>
+          </button>
+          <HistoryPagination :current="history.current_page" :last="history.last_page" :busy="busy"
+            label="履歴ページの選択（下）" @change="page => run(() => openRecipient(recipient.id, page))" />
         </template>
 
         <section v-if="['recipient-new', 'recipient-edit'].includes(screen)">
@@ -300,7 +315,23 @@ onMounted(async () => {
             <label>贈った人 <input v-model="draft.giver" maxlength="255" required></label>
             <label>反応（任意） <textarea v-model="draft.reaction" maxlength="4000"></textarea></label>
             <label>価格（任意、円） <input v-model="draft.price" type="number" min="0" max="4294967295" step="1"></label>
-            <label>イベント（任意） <input v-model="draft.event" maxlength="255"></label>
+            <fieldset class="event-picker">
+              <legend>イベント（任意）</legend>
+              <div class="event-options">
+                <label class="event-option">
+                  <input v-model="draft.event" type="radio" name="gift-event" :value="null">
+                  <span>イベントなし</span>
+                </label>
+                <label v-if="screen === 'gift-edit' && gift.event && !events.includes(gift.event)" class="event-option">
+                  <input v-model="draft.event" type="radio" name="gift-event" :value="gift.event">
+                  <span>{{ gift.event }}（登録済み）</span>
+                </label>
+                <label v-for="event in events" :key="event" class="event-option">
+                  <input v-model="draft.event" type="radio" name="gift-event" :value="event">
+                  <span>{{ event }}</span>
+                </label>
+              </div>
+            </fieldset>
             <img v-if="screen === 'gift-edit' && gift.has_photo" :src="'/api' + giftPath + '/photo'" alt="編集中の贈り物の写真">
             <label>写真（任意、JPEG／PNG、2 MiB以下） <input type="file" accept="image/jpeg,image/png" @change="photo = $event.target.files[0] || null"></label>
             <div class="actions">

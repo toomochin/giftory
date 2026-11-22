@@ -15,8 +15,10 @@ class GiftController extends Controller
         $recipient->checkAccess($request->user());
 
         return $recipient->gifts()
-            ->select('id', 'recipient_id', 'name', 'gifted_on', 'reaction')
-            ->orderByDesc('gifted_on')->orderByDesc('id')->paginate(20);
+            ->select('id', 'recipient_id', 'name', 'gifted_on', 'reaction', 'event', 'price')
+            ->selectRaw('CASE WHEN photo_path IS NULL THEN 0 ELSE 1 END AS has_photo')
+            ->withCasts(['has_photo' => 'boolean'])
+            ->orderByDesc('gifted_on')->orderByDesc('id')->paginate(5);
     }
 
     public function store(Request $request, Recipient $recipient)

@@ -39,7 +39,7 @@ class SharingTest extends TestCase
         $this->postJson($invitation)->assertForbidden();
         $this->getJson($recipient.'/members')->assertForbidden();
 
-        $input = ['name' => '本', 'gifted_on' => '2025-12-01', 'giver' => '友人'];
+        $input = ['name' => '本', 'gifted_on' => '2025-12-01', 'giver' => '友人', 'event' => '誕生日'];
         $gift = $this->post($recipient.'/gifts', $input + ['photo' => $this->photo()], ['Accept' => 'application/json'])
             ->assertCreated()->assertJsonPath('has_photo', true)->assertJsonMissingPath('photo_path')->json('id');
         $path = "/api/gifts/{$gift}";
@@ -49,7 +49,10 @@ class SharingTest extends TestCase
             ->assertNoContent();
 
         $this->actingAs($owner);
-        $this->getJson($recipient.'/gifts')->assertOk()->assertJsonPath('data.0.id', $gift);
+        $this->getJson($recipient.'/gifts')->assertOk()->assertJsonPath('data.0.id', $gift)
+            ->assertJsonPath('data.0.event', '誕生日')
+            ->assertJsonPath('data.0.has_photo', true)
+            ->assertJsonMissingPath('data.0.photo_path');
         $this->getJson($photo)->assertOk();
         $this->patchJson($path, $input)->assertForbidden();
         $this->deleteJson($recipient)->assertConflict();
