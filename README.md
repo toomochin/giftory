@@ -44,7 +44,7 @@ php artisan serve
 
 ## サンプルデータ
 
-Dockerのローカル環境に、デモ会員2人、贈る相手2人、贈り物5件を追加できます。
+Dockerのローカル環境に、デモ会員2人、贈る相手2人、贈り物45件（個人用22件・共有23件）を追加できます。
 
 ```sh
 docker compose exec -T app php artisan db:seed --class=DemoSeeder

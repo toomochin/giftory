@@ -36,7 +36,42 @@ class DemoSeeder extends Seeder
             $this->gift($family, $owner, 'ガラスの花瓶', '2026-09-13', 'デモ管理者', '記念日', 3200, null);
             $this->gift($friend, $owner, 'ドリップコーヒーセット', '2026-02-14', 'デモ管理者', 'バレンタイン', 2400, '深煎りが気に入ったそう。');
             $this->gift($friend, $owner, '布製のブックカバー', '2026-07-18', 'デモ管理者', '誕生日', 1800, '通勤中の読書に使ってくれている。');
+            $this->seedHistory($family, $owner, $member);
+            $this->seedHistory($friend, $owner);
         });
+    }
+
+    private function seedHistory(Recipient $recipient, User $owner, ?User $member = null): void
+    {
+        $items = [
+            ['文庫本', 'お土産'],
+            ['マグカップ', '誕生日'],
+            ['ハンドタオル', 'お礼'],
+            ['ドリップバッグ', '記念日'],
+            ['チョコレート', 'バレンタイン'],
+            ['クッキー缶', 'クリスマス'],
+            ['紅茶セット', 'お祝い'],
+            ['靴下', 'その他'],
+            ['入浴剤', 'お礼'],
+            ['ジャムセット', 'お土産'],
+            ['花束', '母の日'],
+            ['革のしおり', '誕生日'],
+            ['スープセット', 'お祝い'],
+            ['ノート', '記念日'],
+            ['ポーチ', 'お土産'],
+            ['はちみつ', 'お礼'],
+            ['コーヒー豆', '父の日'],
+            ['焼き菓子', 'ホワイトデー'],
+            ['ミニ観葉植物', 'お祝い'],
+            ['映画チケット', '誕生日'],
+        ];
+        $reactions = ['気に入って使ってくれている。', 'その場で喜んでくれた。', 'お礼のメッセージをもらった。', null];
+
+        foreach ($items as $index => [$name, $event]) {
+            $author = $member !== null && $index % 2 === 1 ? $member : $owner;
+            $date = sprintf('2024-%02d-%02d', intdiv($index, 2) + 1, $index % 2 === 0 ? 8 : 23);
+            $this->gift($recipient, $author, $name, $date, $author->name, $event, 1000 + $index * 150, $reactions[$index % count($reactions)]);
+        }
     }
 
     private function account(string $email, string $name): User
