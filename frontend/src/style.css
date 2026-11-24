@@ -106,7 +106,18 @@ time, small { color: #526056; }
 .direction-option.given input:checked + span { background: #153d65; border-color: #153d65; box-shadow: inset 0 0 0 2px #fff; }
 .direction-option.received input:checked + span { background: #713213; border-color: #713213; box-shadow: inset 0 0 0 2px #fff; }
 
-.inline-giver { margin: .75rem 0; padding: .6rem .9rem; border: 1px solid #dfe2d9; border-radius: .6rem; background: #f8faf8; min-inline-size: 0; }
+.giver-dialog {
+  width: min(26rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  padding: 1.25rem;
+  border: 1px solid #dfe2d9;
+  border-radius: .9rem;
+  color: inherit;
+  box-shadow: 0 16px 54px rgb(0 0 0 / 22%);
+}
+.giver-dialog::backdrop { background: rgb(20 35 30 / 48%); }
+.giver-dialog h2 { margin: 0 0 .75rem; }
+.giver-dialog .actions { margin-bottom: 0; }
 
 .header-actions .header-gift-button { display: grid; place-items: center; min-width: 2.45rem; min-height: 2.3rem; color: #244d3e; }
 .header-gift-icon { position: relative; display: block; width: 1.25rem; height: .9rem; margin-top: .35rem; border: 2px solid currentColor; border-radius: .16rem; }
@@ -115,3 +126,27 @@ time, small { color: #526056; }
 .header-gift-icon::before { right: 50%; transform: rotate(12deg); }
 .header-gift-icon::after { left: 50%; transform: scaleX(-1) rotate(12deg); }
 .header-gift-icon span { position: absolute; inset: 0; background: linear-gradient(to right, transparent calc(50% - 1px), currentColor calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)); }
+
+.gift-people { display: grid; gap: .5rem; margin: .6rem 0; }
+.gift-people-arrow { justify-self: center; color: #526056; font-size: 1.45rem; font-weight: 700; line-height: 1; }
+.gift-arrow-horizontal { display: none; }
+@media (min-width: 600px) {
+  .gift-people.paired {
+    --gift-field-label-height: 1.6rem;
+    --gift-select-spacing: .2rem;
+    --gift-select-height: 2.5rem;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+  .gift-people.paired label { line-height: var(--gift-field-label-height); }
+  .gift-people.paired select { height: var(--gift-select-height); margin-top: var(--gift-select-spacing); }
+  .gift-people-arrow {
+    display: grid;
+    place-items: center;
+    height: var(--gift-select-height);
+    margin-top: calc(var(--gift-field-label-height) + var(--gift-select-spacing));
+  }
+  .gift-arrow-horizontal { display: inline; }
+  .gift-arrow-vertical { display: none; }
+}
+.gift-people label { min-width: 0; margin: 0; }
+.gift-people select { min-width: 0; }

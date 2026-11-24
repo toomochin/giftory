@@ -34,7 +34,7 @@ class GiftController extends Controller
 
         return $query
             ->when($direction, fn (Builder $query) => $query->where('direction', $direction))
-            ->select('id', 'recipient_id', 'name', 'gifted_on', 'reaction', 'event', 'price', 'direction')
+            ->select('id', 'recipient_id', 'name', 'gifted_on', 'reaction', 'event', 'price', 'direction', 'giver')
             ->selectRaw('CASE WHEN photo_path IS NULL THEN 0 ELSE 1 END AS has_photo')
             ->withCasts(['has_photo' => 'boolean'])
             ->orderByDesc('gifted_on')->orderByDesc('id')->paginate(5);

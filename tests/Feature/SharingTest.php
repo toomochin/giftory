@@ -52,6 +52,7 @@ class SharingTest extends TestCase
         $this->getJson($recipient.'/gifts')->assertOk()->assertJsonPath('data.0.id', $gift)
             ->assertJsonPath('data.0.event', '誕生日')
             ->assertJsonPath('data.0.direction', 'given')
+            ->assertJsonPath('data.0.giver', '友人')
             ->assertJsonPath('data.0.has_photo', true)
             ->assertJsonMissingPath('data.0.photo_path');
         $this->getJson($photo)->assertOk();
