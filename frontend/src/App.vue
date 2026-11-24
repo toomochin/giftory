@@ -367,7 +367,7 @@ onMounted(async () => {
                 <span class="history-card-direction" :class="{ received: record.direction === 'received' }">{{ directions[record.direction] }}</span>
                 <span v-if="record.event" class="history-card-event">{{ record.event }}</span>
                 <span class="history-card-recipient">
-                  <template v-if="record.direction === 'given'">{{ record.giver }} → </template>{{ record.recipient?.name ?? recipient?.name }}
+                  <template v-if="record.direction === 'given'">{{ record.giver }}{{ screen === 'all-history' && record.giver === user.name ? '（自分）' : '' }} → </template>{{ record.recipient?.name ?? recipient?.name }}
                 </span>
               </span>
               <span class="note history-card-reaction" :class="{ empty: !record.reaction }">{{ record.reaction || '反応は未記入' }}</span>
