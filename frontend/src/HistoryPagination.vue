@@ -21,18 +21,28 @@ const pages = computed(() => {
     props.last,
   ]
 })
+const compactPages = computed(() => {
+  const { current, last } = props
+  if (last <= 6) return Array.from({ length: last }, (_, index) => index + 1)
+  if (current <= 3) return [1, 2, 3, 4, 5, 'end-gap', last]
+  if (current >= last - 2) return [1, 'start-gap', last - 4, last - 3, last - 2, last - 1, last]
+  return [1, 'start-gap', current - 1, current, current + 1, 'end-gap', last]
+})
 </script>
 
 <template>
   <nav v-if="last > 1" class="history-pagination" :aria-label="label">
     <button type="button" :disabled="busy || current <= 1" @click="emit('change', current - 1)">前へ</button>
-    <template v-for="page in pages" :key="page">
-      <span v-if="typeof page === 'string'" class="pagination-gap" aria-hidden="true">…</span>
-      <button v-else type="button" :aria-current="page === current ? 'page' : undefined"
-        :aria-label="page + 'ページ目'" :disabled="busy" @click="page !== current && emit('change', page)">
-        {{ page }}
-      </button>
-    </template>
+    <div v-for="(numbers, variant) in { desktop: pages, compact: compactPages }" :key="variant"
+      class="pagination-numbers" :class="'pagination-' + variant">
+      <template v-for="page in numbers" :key="page">
+        <span v-if="typeof page === 'string'" class="pagination-gap" aria-hidden="true">…</span>
+        <button v-else type="button" :aria-current="page === current ? 'page' : undefined"
+          :aria-label="page + 'ページ目'" :disabled="busy" @click="page !== current && emit('change', page)">
+          {{ page }}
+        </button>
+      </template>
+    </div>
     <button type="button" :disabled="busy || current >= last" @click="emit('change', current + 1)">次へ</button>
   </nav>
 </template>

@@ -95,8 +95,33 @@ time, small { color: #526056; }
 
 .history-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: .9rem 0; }
 .history-pagination button { min-width: 2.5rem; }
+.pagination-numbers { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; min-width: 0; }
 .history-pagination button[aria-current="page"] { background: #315d4c; color: white; cursor: default; }
 .pagination-gap { padding-inline: .15rem; }
+.pagination-compact { display: none; }
+@media (max-width: 600px) {
+  .history-pagination {
+    flex-wrap: nowrap;
+    gap: .25rem;
+  }
+  .pagination-desktop { display: none; }
+  .pagination-compact {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: .125rem;
+    overflow-x: auto;
+    padding-block: .2rem;
+  }
+  .history-pagination button {
+    flex: 0 0 auto;
+    min-width: 1.875rem;
+    min-height: 2.75rem;
+    padding: .35rem .45rem;
+    font-size: .95rem;
+    white-space: nowrap;
+  }
+  .pagination-compact button { min-width: 1.875rem; padding-inline: .25rem; }
+}
 
 .history-card-direction { padding: .08rem .55rem; border-radius: 1rem; font-weight: 600; }
 .history-card-direction,
