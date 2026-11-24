@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Gift;
 use App\Models\Recipient;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -70,7 +71,20 @@ class DemoSeeder extends Seeder
         foreach ($items as $index => [$name, $event]) {
             $author = $member !== null && $index % 2 === 1 ? $member : $owner;
             $date = sprintf('2024-%02d-%02d', intdiv($index, 2) + 1, $index % 2 === 0 ? 8 : 23);
-            $this->gift($recipient, $author, $name, $date, $author->name, $event, 1000 + $index * 150, $reactions[$index % count($reactions)]);
+            $direction = intdiv($index, 2) % 2 === 0 ? 'given' : 'received';
+            $price = 1000 + $index * 150;
+            $reaction = $reactions[$index % count($reactions)];
+
+            $gift = $this->gift($recipient, $author, $name, $date, $author->name, $event, $price, $reaction);
+            // Convert older demo rows only if their original seeded fields are intact.
+            if ($direction === 'received' && $gift->direction === 'given' && $gift->giver === $author->name
+                && $gift->event === $event && $gift->price === $price && $gift->reaction === $reaction && $gift->photo_path === null) {
+                $gift->update([
+                    'direction' => 'received',
+                    'giver' => $recipient->name,
+                    'reaction' => $reaction === null ? null : '受け取ってうれしかった。',
+                ]);
+            }
         }
     }
 
@@ -86,15 +100,17 @@ class DemoSeeder extends Seeder
         return $user;
     }
 
-    private function gift(Recipient $recipient, User $author, string $name, string $date, string $giver, string $event, int $price, ?string $reaction): void
+    private function gift(Recipient $recipient, User $author, string $name, string $date, string $giver, string $event, int $price, ?string $reaction): Gift
     {
         $gift = $recipient->gifts()->where('created_by', $author->id)->firstOrNew(['name' => $name, 'gifted_on' => $date]);
         if ($gift->exists) {
-            return;
+            return $gift;
         }
 
         $gift->fill(['giver' => $giver, 'event' => $event, 'price' => $price, 'reaction' => $reaction]);
         $gift->created_by = $author->id;
         $gift->save();
+
+        return $gift;
     }
 }
