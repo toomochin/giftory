@@ -29,3 +29,6 @@ Thumbs.db
 /.laravel-scaffold/
 /frontend/node_modules/
 /public/app/
+
+/.env.production
+/.env.alwaysdata

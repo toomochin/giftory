@@ -75,6 +75,17 @@ vendor/bin/pint --test
 
 ## 公開環境
 
-Laravel のドキュメントルートを `public/` に設定し、Vueをビルドして同じHTTPSオリジンで提供します。本番では `APP_ENV=production`、`APP_DEBUG=false`、`APP_URL` に公開URL、`SESSION_SECURE_COOKIE=true` を設定します。MySQLを接続して `php artisan migrate --force` を実行し、`storage/app/private` は再デプロイ後も保持される非公開ストレージに置きます。
+公開用のDocker構成は、CaddyでHTTPSを提供し、ApacheでLaravelとVueを同じURLから配信します。MySQL・写真・証明書はDockerボリュームに保存します。
+
+1. Docker Composeが使える公開サーバーを用意し、ドメインのDNSをそのサーバーに向けます。外部からTCP 80番と443番に接続できるようにします。
+2. サーバーで `cp .env.production.example .env.production` を実行し、ドメインとSMTP設定を入力します。`APP_KEY` には `base64:` に続けて `openssl rand -base64 32` の出力を設定し、`GIFTORY_DB_PASSWORD` には `openssl rand -hex 32` の出力を設定します。`GIFTORY_DOMAIN` の値は `giftory.example.com` のようなホスト名です。
+3. 公開用のComposeを起動します。MySQLが使える状態になると自動でマイグレーションが実行されます。
+
+```sh
+docker compose --env-file .env.production -f compose.production.yaml up -d --build
+docker compose --env-file .env.production -f compose.production.yaml ps
+```
+
+証明書発行後、`https://設定したドメイン` を開き、別の端末で会員登録、写真付き記録、共有招待を確認してください。更新時も同じ起動コマンドを使います。データを保持するため、公開中の `APP_KEY` とデータベースのパスワードを維持し、MySQLと写真を定期的にバックアップしてください。
 
 設計は [要件定義書](docs/要件定義書.md) と [基本設計](docs/基本設計.md) を参照してください。

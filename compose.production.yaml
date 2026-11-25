@@ -1,0 +1,72 @@
+name: giftory-production
+
+services:
+  app:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY:?Set APP_KEY in .env.production}
+      APP_URL: https://${GIFTORY_DOMAIN:?Set GIFTORY_DOMAIN in .env.production}
+      GIFTORY_TRUST_PROXY: "true"
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: giftory
+      DB_USERNAME: giftory
+      DB_PASSWORD: ${GIFTORY_DB_PASSWORD:?Set GIFTORY_DB_PASSWORD in .env.production}
+      SESSION_DRIVER: database
+      SESSION_SECURE_COOKIE: "true"
+      CACHE_STORE: database
+      LOG_CHANNEL: stderr
+      MAIL_MAILER: smtp
+      MAIL_HOST: ${GIFTORY_SMTP_HOST:?Set GIFTORY_SMTP_HOST in .env.production}
+      MAIL_PORT: ${GIFTORY_SMTP_PORT:-587}
+      MAIL_SCHEME: ${GIFTORY_SMTP_SCHEME:-smtp}
+      MAIL_USERNAME: ${GIFTORY_SMTP_USERNAME:-}
+      MAIL_PASSWORD: ${GIFTORY_SMTP_PASSWORD:-}
+      MAIL_FROM_ADDRESS: ${GIFTORY_MAIL_FROM:?Set GIFTORY_MAIL_FROM in .env.production}
+      MAIL_FROM_NAME: Giftory
+    volumes:
+      - photos:/var/www/html/storage/app/private
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: giftory
+      MYSQL_USER: giftory
+      MYSQL_PASSWORD: ${GIFTORY_DB_PASSWORD:?Set GIFTORY_DB_PASSWORD in .env.production}
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    healthcheck:
+      test: ["CMD-SHELL", "mysql --protocol=TCP -h 127.0.0.1 -u giftory --password=\"$$MYSQL_PASSWORD\" giftory -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - database:/var/lib/mysql
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      GIFTORY_DOMAIN: ${GIFTORY_DOMAIN:?Set GIFTORY_DOMAIN in .env.production}
+    ports:
+      - "${GIFTORY_BIND_ADDRESS:-0.0.0.0}:${GIFTORY_HTTP_PORT:-80}:80"
+      - "${GIFTORY_BIND_ADDRESS:-0.0.0.0}:${GIFTORY_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - app
+
+volumes:
+  photos:
+  database:
+  caddy_data:
