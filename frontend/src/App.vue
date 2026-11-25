@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
 import HistoryPagination from './HistoryPagination.vue'
+import { prepareGiftPhoto } from './giftPhoto.js'
 
 const user = ref(null)
 const ready = ref(false)
@@ -184,26 +185,20 @@ function closeGiverForm() {
   errors.value = []
 }
 
-function photoForm() {
-  const data = new FormData()
-  if (photo.value) data.append('photo', photo.value)
-  return data
-}
-
 async function saveGift() {
+  const data = new FormData()
+  if (photo.value) data.append('photo', await prepareGiftPhoto(photo.value))
   const dataFields = { ...draft.value }
   if (dataFields.direction === 'received') dataFields.giver = receivedFrom.value
   if (screen.value === 'gift-edit') {
     await api(giftPath.value, 'PATCH', dataFields)
     if (photo.value) {
-      const data = photoForm()
       data.append('_method', 'PUT')
       await api(giftPath.value + '/photo', 'POST', data)
     }
     await openGift(gift.value.id)
     return
   }
-  const data = photoForm()
   for (const [field, value] of Object.entries(dataFields)) {
     if (value !== null && value !== '') data.append(field, value)
   }
@@ -486,7 +481,7 @@ onMounted(async () => {
               </div>
             </fieldset>
             <img v-if="screen === 'gift-edit' && gift.has_photo" :src="'/api' + giftPath + '/photo'" alt="編集中の贈り物の写真">
-            <label>写真（任意、JPEG／PNG、2 MiB以下） <input type="file" accept="image/jpeg,image/png" @change="photo = $event.target.files[0] || null"></label>
+            <label>写真（任意、JPEG／PNG。2 MiBを超える写真は自動で縮小） <input type="file" accept="image/jpeg,image/png" @change="photo = $event.target.files[0] || null"></label>
             <div class="actions">
               <button class="primary" :disabled="busy || !!newGiver">保存</button>
               <button type="button" :disabled="busy" @click="screen = giftFormReturn">戻る</button>
