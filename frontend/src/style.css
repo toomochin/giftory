@@ -201,3 +201,10 @@ time, small { color: #526056; }
   background: repeating-linear-gradient(to bottom, transparent 0 calc(2rem - 1px), #e7dfca calc(2rem - 1px) 2rem);
 }
 .gift-detail-memo .gift-memo-empty { color: #625f54; }
+
+.recipient-card { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .8rem; }
+.recipient-card-name { font-weight: 650; min-width: 0; overflow-wrap: anywhere; }
+.recipient-card-labels { display: flex; flex-wrap: wrap; gap: .35rem; min-width: 0; }
+.recipient-relationship, .recipient-shared { padding: .12rem .6rem; border-radius: 1rem; font-size: .88rem; overflow-wrap: anywhere; }
+.recipient-relationship { background: #eee9f5; color: #514167; }
+.recipient-shared { background: #28649a; color: white; font-weight: 650; }

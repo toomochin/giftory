@@ -14,6 +14,7 @@ class RecipientController extends Controller
 
         return Recipient::query()->where('owner_id', $id)
             ->orWhereHas('members', fn ($query) => $query->whereKey($id))
+            ->withExists('members as is_shared')
             ->orderBy('name')->orderBy('id')->get();
     }
 

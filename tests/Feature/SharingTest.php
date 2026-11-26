@@ -31,11 +31,12 @@ class SharingTest extends TestCase
             ->assertJsonPath('recipient_name', '家族A');
 
         $this->actingAs($member);
+        $this->getJson('/api/recipients')->assertJsonCount(0);
         $this->getJson($recipient)->assertNotFound();
         $this->postJson('/api/invitations/accept', ['token' => $token])->assertCreated();
         $this->postJson('/api/invitations/accept', ['token' => $token])->assertNotFound();
         $this->getJson($recipient)->assertOk();
-        $this->getJson('/api/recipients')->assertJsonCount(1);
+        $this->getJson('/api/recipients')->assertJsonCount(1)->assertJsonPath('0.is_shared', true);
         $this->postJson($invitation)->assertForbidden();
         $this->getJson($recipient.'/members')->assertForbidden();
 
@@ -58,7 +59,9 @@ class SharingTest extends TestCase
         $this->getJson($photo)->assertOk();
         $this->patchJson($path, $input)->assertForbidden();
         $this->deleteJson($recipient)->assertConflict();
+        $this->getJson('/api/recipients')->assertJsonPath('0.is_shared', true);
         $this->deleteJson($recipient.'/members/'.$member->id)->assertNoContent();
+        $this->getJson('/api/recipients')->assertJsonPath('0.is_shared', false);
         $this->actingAs($member);
         $this->getJson($path)->assertNotFound();
         $this->getJson($photo)->assertNotFound();

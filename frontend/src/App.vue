@@ -319,9 +319,12 @@ onMounted(async () => {
             <button class="primary" :disabled="busy" @click="recipientForm()">相手を登録</button>
           </div>
           <p v-if="!recipients.length">贈り物を記録する相手を登録してください。</p>
-          <article v-for="record in recipients" :key="record.id">
-            <button :disabled="busy" @click="run(() => openRecipient(record.id))">{{ record.name }}</button>
-            <small> {{ record.relationship }}{{ record.owner_id !== user.id ? ' · 共有' : '' }}</small>
+          <article v-for="record in recipients" :key="record.id" class="recipient-card">
+            <button class="recipient-card-name" :disabled="busy" @click="run(() => openRecipient(record.id))">{{ record.name }}</button>
+            <div class="recipient-card-labels">
+              <span class="recipient-relationship">{{ record.relationship }}</span>
+              <span v-if="record.is_shared || record.owner_id !== user.id" class="recipient-shared">共有中</span>
+            </div>
           </article>
         </template>
 
