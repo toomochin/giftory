@@ -1,6 +1,12 @@
 # Giftory
 
-家族や友人への贈り物と反応を相手ごとに記録するWebアプリです。招待した会員と、選んだ相手の履歴を共有できます。
+家族や友人に贈ったもの、もらったものを相手ごとに記録するWebアプリです。品物とメモを見返し、次の贈り物選びに使えます。[Giftoryの公開サイト](https://giftory.alwaysdata.net/)
+
+## 主な機能
+
+- ログイン後に「すべての履歴」を表示します。全件・相手別の履歴は「贈った」「もらった」で絞り込めます。カードを押すと詳細が開き、上下のページ番号で1ページ最大5件ずつ切り替えられます。
+- ヘッダーの贈り物アイコンから直接記録できます。フォームで相手を追加でき、「贈った」では自分以外の贈り主も選べます。イベント・価格・メモ・写真は任意です。2 MiBを超えるJPEG・PNGは送信前にブラウザで縮小を試みます。
+- 選んだ相手の履歴だけを共有できます。共有中の相手には一覧に目印が付き、招待された会員は参加後に履歴を閲覧・追加できます。
 
 ## Dockerで起動
 
@@ -23,7 +29,7 @@ Docker版と一緒にMailpitが起動します。開発用メールは [http://l
 docker compose exec -T app php artisan tinker --execute='Illuminate\Support\Facades\Mail::raw("Giftory mail test", fn ($message) => $message->to("demo-owner@giftory.test")->subject("Giftory SMTP test"));'
 ```
 
-会員登録時はウェルカムメールが届きます。共有管理で宛先を入力して招待を発行すると、招待リンク付きメールが届きます。宛先を空欄にするとリンクだけが発行されます。
+Dockerの開発環境では、会員登録時のウェルカムメールと、招待時に宛先を入力した場合の招待メールをMailpitで確認できます。宛先を空欄にするとリンクだけが発行されます。
 
 ## ローカル起動
 
@@ -65,6 +71,7 @@ Docker内でテストする場合は、テスト用の環境とインメモリDB
 docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=:memory: -e MAIL_MAILER=array app php artisan test --fail-on-warning
 ```
 
+Dockerを使わずにテストやPHPの書式を確認する場合は、以下を実行します。
 
 ```sh
 php artisan test
@@ -73,7 +80,31 @@ vendor/bin/pint --test
 
 共有を確認するには、管理者が相手を登録して共有管理から招待リンクを発行し、別のブラウザプロファイルで別会員として開きます。参加後に履歴を閲覧・追加でき、管理者による解除または本人の退出後は履歴と写真が開けなくなることを確認します。
 
-## 公開環境
+## 公開環境（alwaysdata）
+
+公開中の環境では、Laravelとビルド済みのVueを同じHTTPS URLで配信し、MariaDBを使用しています。会員登録・ログイン、写真付きの記録、コピーした招待リンクからの参加、解除後の閲覧制限を確認済みです。公開環境でのメール配信は未確認です。[Giftoryの公開サイト](https://giftory.alwaysdata.net/)
+
+PHP側の変更を反映するときは、公開サーバーのSSHセッションで取得します。
+
+```sh
+git -C ~/giftory pull --ff-only origin main
+```
+
+画面を変更した場合は、ローカルで最新のソースをビルドし、`public/app/` をサーバーの `~/giftory/public/` に転送します。
+
+```sh
+npm --prefix frontend ci
+npm --prefix frontend run build
+scp -r public/app giftory@ssh-giftory.alwaysdata.net:~/giftory/public/
+```
+
+公開環境でブラウザの表示とログインを確認します。ログインしていない状態のAPIは `401` を返します。
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' https://giftory.alwaysdata.net/api/me
+```
+
+## Docker Composeで公開する場合
 
 公開用のDocker構成は、CaddyでHTTPSを提供し、ApacheでLaravelとVueを同じURLから配信します。MySQL・写真・証明書はDockerボリュームに保存します。
 
