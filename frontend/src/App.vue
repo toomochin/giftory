@@ -365,7 +365,7 @@ onMounted(async () => {
                   <template v-if="record.direction === 'given'">{{ record.giver }}{{ screen === 'all-history' && record.giver === user.name ? '（自分）' : '' }} → </template>{{ record.recipient?.name ?? recipient?.name }}
                 </span>
               </span>
-              <span class="note history-card-reaction" :class="{ empty: !record.reaction }">{{ record.reaction || '反応は未記入' }}</span>
+              <span class="note history-card-reaction" :class="{ empty: !record.reaction }">{{ record.reaction || 'メモは未記入' }}</span>
             </span>
           </button>
           <HistoryPagination :current="history.current_page" :last="history.last_page" :busy="busy"
@@ -389,15 +389,18 @@ onMounted(async () => {
         <section v-if="screen === 'gift'">
           <button :disabled="busy" @click="run(() => refreshHistory())">履歴へ戻る</button>
           <h1>{{ gift.name }}</h1>
-          <dl>
-            <dt>区分</dt><dd>{{ directions[gift.direction] }}</dd>
-            <dt>{{ gift.direction === 'received' ? 'もらった日' : '贈った日' }}</dt><dd>{{ gift.gifted_on }}</dd>
-            <dt>{{ gift.direction === 'received' ? 'くれた人' : '贈った人' }}</dt><dd>{{ gift.giver }}</dd>
-            <dt>登録者</dt><dd>{{ gift.recorder?.name }}</dd>
-            <template v-if="gift.event"><dt>イベント</dt><dd>{{ gift.event }}</dd></template>
-            <template v-if="gift.price != null"><dt>価格</dt><dd>{{ gift.price }}円</dd></template>
-            <dt>反応</dt><dd class="note">{{ gift.reaction || '反応は未記入' }}</dd>
+          <dl class="gift-detail-fields">
+            <div><dt>区分</dt><dd>{{ directions[gift.direction] }}</dd></div>
+            <div><dt>{{ gift.direction === 'received' ? 'もらった日' : '贈った日' }}</dt><dd>{{ gift.gifted_on }}</dd></div>
+            <div><dt>{{ gift.direction === 'received' ? 'くれた人' : '贈った人' }}</dt><dd>{{ gift.giver }}</dd></div>
+            <div><dt>登録者</dt><dd>{{ gift.recorder?.name }}</dd></div>
+            <div v-if="gift.event"><dt>イベント</dt><dd>{{ gift.event }}</dd></div>
+            <div v-if="gift.price != null"><dt>価格</dt><dd>{{ yen.format(gift.price) }}</dd></div>
           </dl>
+          <div class="gift-detail-memo">
+            <h2>メモ</h2>
+            <p class="note" :class="{ 'gift-memo-empty': !gift.reaction }">{{ gift.reaction || 'メモは未記入' }}</p>
+          </div>
           <img v-if="gift.has_photo" :src="'/api' + giftPath + '/photo?updated=' + encodeURIComponent(gift.updated_at)" :alt="gift.name + 'の写真'">
           <div v-if="editor" class="actions">
             <button :disabled="busy" @click="run(() => giftForm(gift))">編集</button>
@@ -461,7 +464,7 @@ onMounted(async () => {
               </template>
             </div>
             <label>{{ draft.direction === 'received' ? 'もらった日' : '贈った日' }} <input v-model="draft.gifted_on" type="date" required></label>
-            <label>反応（任意） <textarea v-model="draft.reaction" maxlength="4000"></textarea></label>
+            <label>メモ（任意） <textarea placeholder="相手の反応や、次の贈り物選びに役立つことなど" v-model="draft.reaction" maxlength="4000"></textarea></label>
             <label>価格（任意、円） <input v-model="draft.price" type="number" min="0" max="4294967295" step="1"></label>
             <fieldset class="event-picker">
               <legend>イベント（任意）</legend>

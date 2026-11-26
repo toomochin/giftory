@@ -175,3 +175,29 @@ time, small { color: #526056; }
 }
 .gift-people label { min-width: 0; margin: 0; }
 .gift-people select { min-width: 0; }
+
+.gift-detail-fields { margin: 0 0 1.2rem; }
+.gift-detail-fields > div {
+  display: grid;
+  grid-template-columns: minmax(5.6rem, 28%) minmax(0, 1fr);
+  gap: .6rem;
+  padding: .55rem 0;
+  border-bottom: 1px solid #dfe5df;
+}
+.gift-detail-fields dt { color: #526056; font-size: .88rem; }
+.gift-detail-fields dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.gift-detail-memo {
+  margin: 0 0 1.2rem;
+  padding: .8rem 1rem;
+  border: 1px solid #e5dfce;
+  border-radius: .65rem;
+  background: #fffcf2;
+}
+.gift-detail-memo h2 { margin: 0 0 .3rem; color: #4a4537; font-size: .95rem; }
+.gift-detail-memo p {
+  margin: 0;
+  min-height: 4rem;
+  line-height: 2rem;
+  background: repeating-linear-gradient(to bottom, transparent 0 calc(2rem - 1px), #e7dfca calc(2rem - 1px) 2rem);
+}
+.gift-detail-memo .gift-memo-empty { color: #625f54; }
