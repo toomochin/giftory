@@ -176,16 +176,47 @@ time, small { color: #526056; }
 .gift-people label { min-width: 0; margin: 0; }
 .gift-people select { min-width: 0; }
 
-.gift-detail-fields { margin: 0 0 1.2rem; }
+.gift-detail-overview {
+  display: grid;
+  align-items: start;
+  gap: clamp(.65rem, 2vw, 1.25rem);
+  margin: .85rem 0 1rem;
+}
+.gift-detail-overview.has-photo { grid-template-columns: minmax(0, 1fr) min(53%, 25rem); }
+.gift-detail-overview h1 {
+  margin: 0 0 .45rem;
+  font-size: clamp(1.25rem, 4vw, 1.75rem);
+  overflow-wrap: anywhere;
+}
+.gift-detail-photo {
+  display: block;
+  width: 100%;
+  max-height: clamp(12rem, 46vh, 26rem);
+  border-radius: .65rem;
+  background: #f1f3ee;
+  object-fit: contain;
+}
+.gift-detail-fields { margin: 0; }
 .gift-detail-fields > div {
   display: grid;
-  grid-template-columns: minmax(5.6rem, 28%) minmax(0, 1fr);
-  gap: .6rem;
-  padding: .55rem 0;
+  grid-template-columns: minmax(4.5rem, 28%) minmax(0, 1fr);
+  align-items: baseline;
+  gap: .35rem .6rem;
+  padding: .42rem 0;
   border-bottom: 1px solid #dfe5df;
+  line-height: 1.35;
 }
-.gift-detail-fields dt { color: #526056; font-size: .88rem; }
+.gift-detail-fields dt { color: #526056; font-size: .84rem; }
 .gift-detail-fields dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+@media (max-width: 420px) {
+  .gift-detail { padding-inline: .85rem; }
+  .gift-detail-fields > div {
+    grid-template-columns: minmax(3.25rem, 38%) minmax(0, 1fr);
+    gap: .35rem;
+    font-size: .88rem;
+  }
+  .gift-detail-fields dt { font-size: .77rem; }
+}
 .gift-detail-memo {
   margin: 0 0 1.2rem;
   padding: .8rem 1rem;
@@ -196,7 +227,7 @@ time, small { color: #526056; }
 .gift-detail-memo h2 { margin: 0 0 .3rem; color: #4a4537; font-size: .95rem; }
 .gift-detail-memo p {
   margin: 0;
-  min-height: 4rem;
+  min-height: 2rem;
   line-height: 2rem;
   background: repeating-linear-gradient(to bottom, transparent 0 calc(2rem - 1px), #e7dfca calc(2rem - 1px) 2rem);
 }
