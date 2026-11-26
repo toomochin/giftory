@@ -10,6 +10,13 @@ class RecipientAccessTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_unauthenticated_api_request_returns_json_without_accept_header(): void
+    {
+        $this->get('/api/me')
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
+    }
+
     public function test_recipient_is_private_and_registration_creates_a_session(): void
     {
         $this->getJson('/api/recipients')->assertUnauthorized();

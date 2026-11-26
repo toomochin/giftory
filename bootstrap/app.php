@@ -15,10 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         if (getenv('GIFTORY_TRUST_PROXY') === 'true') {
             $middleware->trustProxies(at: '*');
         }
-        //
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : url('/'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->shouldRenderJsonWhen(fn ($request, $e) => $request->is('api/*') || $request->expectsJson());
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
