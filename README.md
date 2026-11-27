@@ -82,7 +82,7 @@ vendor/bin/pint --test
 
 ## 公開環境（alwaysdata）
 
-公開中の環境では、Laravelとビルド済みのVueを同じHTTPS URLで配信し、MariaDBを使用しています。会員登録・ログイン、写真付きの記録、コピーした招待リンクからの参加、解除後の閲覧制限を確認済みです。公開環境でのメール配信は未確認です。[Giftoryの公開サイト](https://giftory.alwaysdata.net/)
+公開中の環境では、Laravelとビルド済みのVueを同じHTTPS URLで配信し、MariaDBを使用しています。会員登録・ログイン、写真付きの記録、コピーした招待リンクからの参加、解除後の閲覧制限を確認済みです。公開環境ではalwaysdataのSMTPを通じて招待メールを送信し、実際のメールアドレスで受信できることを確認済みです。[Giftoryの公開サイト](https://giftory.alwaysdata.net/)
 
 PHP側の変更を反映するときは、公開サーバーのSSHセッションで取得します。
 
