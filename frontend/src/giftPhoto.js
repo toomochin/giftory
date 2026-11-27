@@ -16,6 +16,7 @@ export async function prepareGiftPhoto(file) {
     const context = canvas.getContext('2d')
     if (!context) throw new Error('Canvas unavailable')
 
+    // 縦横比を保ち、長辺の上限を決めてから画質と寸法を段階的に下げる。
     let scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight))
     for (const quality of [0.86, 0.78, 0.7, 0.65, 0.6]) {
       canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
@@ -31,6 +32,7 @@ export async function prepareGiftPhoto(file) {
   } catch {
     throw { messages: ['写真を縮小できませんでした。別のJPEGまたはPNGを選んでください。'] }
   } finally {
+    // 縮小に失敗した場合も、元写真の一時URLとキャンバスのメモリを解放する。
     URL.revokeObjectURL(url)
     canvas.width = canvas.height = 0
   }

@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         if (getenv('GIFTORY_TRUST_PROXY') === 'true') {
             $middleware->trustProxies(at: '*');
         }
+        // APIではログイン画面に転送せず、直接URLを開いた場合もJSONの認証エラーを返す。
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : url('/'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {

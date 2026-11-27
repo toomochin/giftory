@@ -32,14 +32,17 @@ class AuthController extends Controller
             'password.max' => 'パスワードは72文字以内で入力してください。',
             'password.confirmed' => '確認用パスワードが一致しません。',
         ]);
+        // 文字数に加えて、bcryptが扱える72バイト以内に収める。
         if (strlen($data['password']) > 72) {
             throw ValidationException::withMessages(['password' => 'パスワードは72バイト以内で入力してください。']);
         }
 
+        // 登録直後にログインさせ、セッションIDを更新する。
         $user = User::create($data);
         Auth::login($user);
         $request->session()->regenerate();
 
+        // ウェルカムメールのSMTPエラーと、会員登録の結果は別に扱う。
         try {
             Mail::raw("Giftoryへのご登録ありがとうございます。\n\nログイン: ".config('app.url'), fn ($message) => $message
                 ->to($user->email)->subject('Giftoryへようこそ'));
@@ -78,6 +81,7 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        // ログアウト前のセッションとCSRFトークンを破棄する。
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -87,6 +91,7 @@ class AuthController extends Controller
 
     private function normalizeEmail(Request $request): void
     {
+        // 登録時とログイン時に同じ形式でメールアドレスを照合する。
         if (is_string($request->input('email'))) {
             $request->merge(['email' => Str::lower($request->input('email'))]);
         }

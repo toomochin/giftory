@@ -44,5 +44,5 @@ npm --prefix frontend run build
 
 - **開発のきっかけと技術選定**　どの場面で履歴を探すのに困ったか。Laravel・Vue・alwaysdataを選んだ理由は何か。
 - **認証と権限の流れ**　[AuthController](app/Http/Controllers/AuthController.php) のログインから、[Recipient](app/Models/Recipient.php) の `checkAccess` による閲覧権限の判定までを、共有解除後の例で説明する。
-- **最も長いPHPメソッド**　現時点では `app/` 内の [SharingController::issue()](app/Http/Controllers/SharingController.php#L52) が38行。権限と入力を確認し、トランザクション内で旧招待を無効にして新規招待を保存する。メール送信をトランザクションの外で行う理由と、メール送信に失敗してもリンクを利用できる仕組みを自分の言葉で説明する。
+- **最も長いPHPメソッド**　現時点では `app/` 内の [SharingController::issue()](app/Http/Controllers/SharingController.php#L54) がコメントを含めて42行。権限と入力を確認し、トランザクション内で旧招待を無効にして新規招待を保存する。メール送信をトランザクションの外で行う理由と、メール送信に失敗してもリンクを利用できる仕組みを自分の言葉で説明する。
 - **試用の結果**　利用者の意見を受けて「反応」を「メモ」に変えた経緯と、実際の贈り物選びで履歴がどう役立ったかを、自分が確認した事実に沿って追記する。

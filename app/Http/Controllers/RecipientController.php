@@ -12,6 +12,7 @@ class RecipientController extends Controller
     {
         $id = $request->user()->id;
 
+        // 自分で登録した相手と、共有に参加中の相手を一覧に表示する。
         return Recipient::query()->where('owner_id', $id)
             ->orWhereHas('members', fn ($query) => $query->whereKey($id))
             ->withExists('members as is_shared')
@@ -44,6 +45,7 @@ class RecipientController extends Controller
 
     public function destroy(Request $request, Recipient $recipient)
     {
+        // 履歴の追加や共有への参加と競合しないよう、相手行をロックしてから削除条件を確かめる。
         DB::transaction(function () use ($request, $recipient) {
             $locked = Recipient::query()->lockForUpdate()->findOrFail($recipient->id);
             $locked->checkOwner($request->user());

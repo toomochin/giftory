@@ -18,12 +18,14 @@ const history = ref(null)
 const historyDirection = ref('')
 const gift = ref(null)
 const draft = ref({})
+// 「もらった」では履歴の相手がくれた人になるため、贈った人の選択欄を省く。
 const giftPeopleFields = computed(() => {
   const fields = screen.value === 'gift-new' ? ['recipient'] : []
   if (draft.value.direction !== 'received') fields.push('giver')
   return fields
 })
 const receivedFrom = computed(() => {
+  // 既存の記録では、相手の名前を変更した後も記録時の贈り主を保持する。
   if (screen.value === 'gift-edit' && gift.value?.direction === 'received') return gift.value.giver
   const id = screen.value === 'gift-edit' ? gift.value?.recipient_id : giftRecipientId.value
   return recipients.value.find(record => String(record.id) === String(id))?.name ?? ''
@@ -42,6 +44,7 @@ const yen = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' 
 const directions = { given: '贈った', received: 'もらった' }
 const events = ['誕生日', '記念日', 'クリスマス', '母の日', '父の日', 'バレンタイン', 'ホワイトデー', 'お祝い', 'お礼', 'お土産', 'その他']
 const preview = ref(null)
+// 招待トークンはURLのフラグメントから読み取り、必要なAPIの本文で送る。
 const token = ref(new URLSearchParams(location.hash.slice(1)).get('invite'))
 const errors = ref([])
 const busy = ref(false)
@@ -52,6 +55,7 @@ const giftPath = computed(() => '/gifts/' + gift.value?.id)
 
 async function api(path, method = 'GET', data) {
   const headers = { Accept: 'application/json' }
+  // LaravelのCSRF Cookieをヘッダーに渡す。写真を含むFormDataのContent-Typeはブラウザに任せる。
   const csrf = document.cookie.split('; ').find(item => item.startsWith('XSRF-TOKEN='))
   if (csrf) headers['X-XSRF-TOKEN'] = decodeURIComponent(csrf.slice(11))
   if (data && !(data instanceof FormData)) {
@@ -72,6 +76,7 @@ async function api(path, method = 'GET', data) {
 }
 
 async function run(action) {
+  // 通信が終わるまで、同じ操作の重複送信を防ぐ。
   if (busy.value) return
   busy.value = true
   errors.value = []
@@ -101,6 +106,7 @@ function openRecipient(id) {
   return openHistory(id)
 }
 
+// 相手IDの有無で相手別と全件を切り替え、ページと区分は同じ処理で扱う。
 async function openHistory(id = null, page = 1, direction = '') {
   const path = id === null ? '/gifts' : '/recipients/' + id + '/gifts'
   const params = new URLSearchParams({ page })
@@ -146,6 +152,7 @@ async function giftForm(record = null) {
   recipients.value = await api('/recipients')
   newGiver.value = null
   giftFormReturn.value = screen.value
+  // 相手別の画面から開いた場合や候補が1人の場合は、登録先をあらかじめ選ぶ。
   giftRecipientId.value = screen.value === 'recipient' ? recipient.value.id : recipients.value.length === 1 ? recipients.value[0].id : ''
   const fields = ['name', 'gifted_on', 'giver', 'reaction', 'price', 'event', 'direction']
   draft.value = record ? Object.fromEntries(fields.map(field => [field, record[field]])) : { event: null, direction: 'given', giver: user.value.name, gifted_on: todayForGift() }
@@ -157,6 +164,7 @@ function selectGiftPerson(event, target) {
   const select = event.target
   const selected = target === 'recipient' ? giftRecipientId : null
   if (select.selectedOptions[0]?.hasAttribute('data-add-recipient')) {
+    // 「相手を追加」は登録ダイアログを開く項目なので、現在の選択を保持する。
     select.value = selected ? selected.value : draft.value.giver
     return showGiverForm(target)
   }
@@ -189,12 +197,14 @@ function closeGiverForm() {
 
 async function saveGift() {
   const data = new FormData()
+  // 縮小に失敗した場合はフォームの保存前にエラーを表示できるよう、先に写真を準備する。
   if (photo.value) data.append('photo', await prepareGiftPhoto(photo.value))
   const dataFields = { ...draft.value }
   if (dataFields.direction === 'received') dataFields.giver = receivedFrom.value
   if (screen.value === 'gift-edit') {
     await api(giftPath.value, 'PATCH', dataFields)
     if (photo.value) {
+      // PHPが写真付きのmultipartリクエストを読めるよう、POSTで送りLaravel側でPUTとして扱う。
       data.append('_method', 'PUT')
       await api(giftPath.value + '/photo', 'POST', data)
     }
@@ -213,6 +223,7 @@ async function sharing() {
     api(recipientPath.value + '/members'), api(recipientPath.value + '/invitation'),
   ])
   members.value = people
+  // 開き直した共有管理からは期限だけを取得でき、平文のリンクは発行時にだけ表示できる。
   invitation.value = active?.expires_at ? active : null
   inviteLink.value = ''
   inviteEmail.value = ''
@@ -240,6 +251,7 @@ async function accept() {
 async function authenticate() {
   user.value = await api(registering.value ? '/register' : '/login', 'POST', credentials.value)
   credentials.value = {}
+  // 招待リンク経由なら、ログイン後も参加の確認画面に留まる。
   if (!token.value) await openHistory()
 }
 

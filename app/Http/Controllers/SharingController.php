@@ -19,6 +19,7 @@ class SharingController extends Controller
         return $recipient->members()->orderBy('users.id')->get(['users.id', 'users.name']);
     }
 
+    // 参加者との関連だけを外し、その参加者が登録した贈り物は履歴に残す。
     public function remove(Request $request, Recipient $recipient, User $user)
     {
         $this->withRecipient($recipient, function (Recipient $locked) use ($request, $user) {
@@ -44,6 +45,7 @@ class SharingController extends Controller
     {
         $recipient->checkOwner($request->user());
 
+        // 発行済み招待を開き直したときは、期限だけを返す。
         $invitation = $this->active()->where('recipient_id', $recipient->id)->first(['expires_at']);
 
         return $invitation ? response()->json($invitation) : response()->noContent();
@@ -55,12 +57,14 @@ class SharingController extends Controller
         $email = $request->validate(['email' => ['nullable', 'string', 'email', 'max:255']], [
             'email.email' => '正しい招待先メールアドレスを入力してください。',
         ])['email'] ?? null;
+        // 相手行をロックして再発行を直列化し、有効な招待を1件に保つ。
         $issued = $this->withRecipient($recipient, function (Recipient $locked) use ($request) {
             $locked->checkOwner($request->user());
             $now = now();
             $expires = $now->copy()->addDays(7);
             $token = bin2hex(random_bytes(32));
             $this->active()->where('recipient_id', $locked->id)->update(['revoked_at' => $now, 'updated_at' => $now]);
+            // DBには照合に使うハッシュを保存する。平文はメールと発行時のリンク作成に使う。
             DB::table('recipient_invitations')->insert([
                 'recipient_id' => $locked->id,
                 'token_hash' => hash('sha256', $token),
@@ -72,6 +76,7 @@ class SharingController extends Controller
             return ['token' => $token, 'expires_at' => $expires];
         });
 
+        // DB確定後にメールを送るので、SMTPエラーが起きても発行済みリンクを使える。
         $issued['email_sent'] = null;
         if ($email !== null) {
             $link = rtrim(config('app.url'), '/').'/#invite='.$issued['token'];
@@ -85,6 +90,7 @@ class SharingController extends Controller
             }
         }
 
+        // 平文の招待トークンを含むレスポンスをキャッシュさせない。
         return response()->json($issued, 201)->header('Cache-Control', 'private, no-store');
     }
 
@@ -116,6 +122,7 @@ class SharingController extends Controller
             $user = $request->user();
             abort_if($locked->owner_id === $user->id || $locked->members()->whereKey($user->id)->exists(), 409, 'すでにこの相手の履歴を閲覧できます。');
             $now = now();
+            // ロック取得後に招待がまだ有効か確かめ、使用日時と参加者を同じトランザクションで保存する。
             $updated = $this->active()->where('id', $invite->id)->update(['used_at' => $now, 'updated_at' => $now]);
             abort_unless($updated === 1, 404, '有効な招待が見つかりません。');
             $locked->members()->attach($user->id, ['joined_at' => $now]);

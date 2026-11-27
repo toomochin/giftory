@@ -8,6 +8,7 @@ const props = defineProps({
   label: { type: String, required: true },
 })
 const emit = defineEmits(['change'])
+// 先頭と末尾を残し、離れたページを省略して現在ページの周辺を表示する。
 const pages = computed(() => {
   if (props.last <= 7) return Array.from({ length: props.last }, (_, index) => index + 1)
 
@@ -21,6 +22,7 @@ const pages = computed(() => {
     props.last,
   ]
 })
+// スマートフォンでは表示する番号を絞り、前へ・次へを置く幅を確保する。
 const compactPages = computed(() => {
   const { current, last } = props
   if (last <= 6) return Array.from({ length: last }, (_, index) => index + 1)

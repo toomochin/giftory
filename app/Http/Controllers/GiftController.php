@@ -20,6 +20,7 @@ class GiftController extends Controller
 
     public function all(Request $request)
     {
+        // 全件履歴にも、自分が管理または共有参加している相手の記録だけを含める。
         $userId = $request->user()->id;
         $query = Gift::query()->whereHas('recipient', function (Builder $query) use ($userId) {
             $query->where('owner_id', $userId)->orWhereHas('members', fn (Builder $members) => $members->whereKey($userId));
@@ -32,6 +33,7 @@ class GiftController extends Controller
     {
         $direction = $request->validate(['direction' => ['sometimes', 'required', 'in:given,received']])['direction'] ?? null;
 
+        // 一覧では写真の有無だけを返す。同日内もID順に並べてページをまたぐ表示を安定させる。
         return $query
             ->when($direction, fn (Builder $query) => $query->where('direction', $direction))
             ->select('id', 'recipient_id', 'name', 'gifted_on', 'reaction', 'event', 'price', 'direction', 'giver')
@@ -48,6 +50,7 @@ class GiftController extends Controller
         $path = $file?->store('gift-photos', 'local');
         abort_if($file && ! $path, 500, '写真を保存できませんでした。');
 
+        // 写真を保存した後も、相手行をロックしてから現在の共有権限を確かめる。
         try {
             $gift = DB::transaction(function () use ($request, $recipient, $data, $path) {
                 $locked = Recipient::query()->lockForUpdate()->findOrFail($recipient->id);
@@ -60,6 +63,7 @@ class GiftController extends Controller
                 return $gift;
             });
         } catch (\Throwable $error) {
+            // DBへの記録が失敗した場合は、先に保存した写真も片付ける。
             $this->removeFile($path);
             throw $error;
         }
@@ -100,6 +104,7 @@ class GiftController extends Controller
         $gift->recipient->checkAccess($request->user());
         abort_unless($gift->photo_path && Storage::disk('local')->exists($gift->photo_path), 404);
 
+        // 共有解除後の閲覧を防ぐため、写真をキャッシュさせず取得のたびに権限を確認する。
         return Storage::disk('local')->response($gift->photo_path, null, [
             'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',
@@ -113,6 +118,7 @@ class GiftController extends Controller
         $path = $file->store('gift-photos', 'local');
         abort_unless($path, 500, '写真を保存できませんでした。');
 
+        // 新しい写真へのDB更新が済むまで旧写真を残す。更新に失敗した場合は新しい写真を削除する。
         try {
             $old = $this->mutate($request, $gift, fn (Gift $locked) => $this->setPhoto($locked, $path));
         } catch (\Throwable $error) {
@@ -134,6 +140,7 @@ class GiftController extends Controller
 
     private function mutate(Request $request, Gift $gift, callable $update): mixed
     {
+        // 共有処理と同じ相手行を先にロックし、参加状況と記録の登録者を更新直前に確かめる。
         return DB::transaction(function () use ($request, $gift, $update) {
             $recipient = Recipient::query()->lockForUpdate()->findOrFail($gift->recipient_id);
             $locked = $recipient->gifts()->lockForUpdate()->findOrFail($gift->id);
@@ -172,6 +179,7 @@ class GiftController extends Controller
 
     private function upload(Request $request, bool $required = false)
     {
+        // ブラウザで縮小された写真も、サーバー上で形式と2 MiBの上限を確かめる。
         return $request->validate([
             'photo' => [$required ? 'required' : 'nullable', 'image', 'mimes:jpeg,png', 'max:2048'],
         ], [
@@ -184,6 +192,7 @@ class GiftController extends Controller
 
     private function attributes(Request $request): array
     {
+        // 登録と編集で入力ルールを共有し、日付の上限は日本時間の当日に合わせる。
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'gifted_on' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.now('Asia/Tokyo')->toDateString()],

@@ -6,12 +6,14 @@ use App\Http\Controllers\RecipientController;
 use App\Http\Controllers\SharingController;
 use Illuminate\Support\Facades\Route;
 
+// 画面とAPIを同一オリジンで提供し、webルートのセッションとCSRF保護を共有する。
 Route::prefix('api')->group(function () {
     Route::middleware('throttle:10,1')->group(function () {
         Route::post('/register', [AuthController::class, 'register']);
         Route::post('/login', [AuthController::class, 'login']);
     });
 
+    // 招待先はログイン前に概要を確認できる。参加確定にはログインが必要。
     Route::post('/invitations/preview', [SharingController::class, 'preview'])->middleware('throttle:20,1');
 
     Route::middleware('auth')->group(function () {

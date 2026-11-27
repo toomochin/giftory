@@ -99,6 +99,7 @@ time, small { color: #526056; }
 .history-pagination button[aria-current="page"] { background: #315d4c; color: white; cursor: default; }
 .pagination-gap { padding-inline: .15rem; }
 .pagination-compact { display: none; }
+/* スマートフォンではページ番号だけを横スクロールさせ、前へ・次へを両端に表示する。 */
 @media (max-width: 600px) {
   .history-pagination {
     flex-wrap: nowrap;
