@@ -8,6 +8,8 @@ const ready = ref(false)
 const screen = ref('home')
 const giftFormReturn = ref('home')
 const giftRecipientId = ref('')
+const savedGiftCount = ref(0)
+const giftNameInput = ref(null)
 const registering = ref(false)
 const credentials = ref({})
 const recipients = ref([])
@@ -155,6 +157,7 @@ async function giftForm(record = null) {
   recipients.value = await api('/recipients')
   newGiver.value = null
   giftFormReturn.value = screen.value
+  savedGiftCount.value = 0
   // 相手別の画面から開いた場合や候補が1人の場合は、登録先をあらかじめ選ぶ。
   giftRecipientId.value = screen.value === 'recipient' ? recipient.value.id : recipients.value.length === 1 ? recipients.value[0].id : ''
   const fields = ['name', 'gifted_on', 'giver', 'reaction', 'price', 'event', 'direction']
@@ -198,7 +201,7 @@ function closeGiverForm() {
   errors.value = []
 }
 
-async function saveGift() {
+async function saveGift(keepRecording) {
   const data = new FormData()
   // 縮小に失敗した場合はフォームの保存前にエラーを表示できるよう、先に写真を準備する。
   if (photo.value) data.append('photo', await prepareGiftPhoto(photo.value))
@@ -220,7 +223,24 @@ async function saveGift() {
     if (value !== null && value !== '') data.append(field, value)
   }
   const record = await api('/recipients/' + giftRecipientId.value + '/gifts', 'POST', data)
+  if (keepRecording) {
+    // 保存に成功してから入力をリセットし、次の記録には相手と区分だけを引き継ぐ。
+    draft.value = { direction: dataFields.direction, giver: user.value.name, event: null, gifted_on: '' }
+    photo.value = null
+    savedGiftCount.value++
+    await nextTick()
+    window.scrollTo({ top: 0 })
+    giftNameInput.value?.focus({ preventScroll: true })
+    return
+  }
   await openGift(record.id)
+}
+
+function leaveGiftForm() {
+  if (savedGiftCount.value && ['all-history', 'recipient'].includes(giftFormReturn.value)) {
+    return run(refreshHistory)
+  }
+  screen.value = giftFormReturn.value
 }
 
 async function sharing() {
@@ -438,6 +458,7 @@ onMounted(async () => {
 
         <section v-if="['gift-new', 'gift-edit'].includes(screen)">
           <h1>{{ screen === 'gift-new' ? '贈り物を記録' : '贈り物を編集' }}</h1>
+          <p v-if="savedGiftCount && !errors.length" role="status">{{ savedGiftCount }}件保存しました。続けて記録できます。</p>
           <dialog v-if="newGiver" ref="newGiverDialog" class="giver-dialog"
             aria-labelledby="new-giver-title" @cancel.prevent="!busy && closeGiverForm()">
             <h2 id="new-giver-title">相手を追加</h2>
@@ -455,8 +476,8 @@ onMounted(async () => {
               </div>
             </form>
           </dialog>
-          <form @submit.prevent="!newGiver && run(saveGift)">
-            <label>品物名 <input v-model="draft.name" maxlength="255" required></label>
+          <form @submit.prevent="!newGiver && run(() => saveGift($event.submitter?.value === 'continue'))">
+            <label>品物名 <input ref="giftNameInput" v-model="draft.name" maxlength="255" required></label>
             <fieldset class="event-picker">
               <legend>贈り物の区分</legend>
               <div class="event-options">
@@ -512,10 +533,11 @@ onMounted(async () => {
               </div>
             </fieldset>
             <img v-if="screen === 'gift-edit' && gift.has_photo" :src="'/api' + giftPath + '/photo'" alt="編集中の贈り物の写真">
-            <label>写真（任意、JPEG／PNG。2 MiBを超える写真は自動で縮小） <input type="file" accept="image/jpeg,image/png" @change="photo = $event.target.files[0] || null"></label>
+            <label>写真（任意、JPEG／PNG。2 MiBを超える写真は自動で縮小） <input :key="savedGiftCount" type="file" accept="image/jpeg,image/png" @change="photo = $event.target.files[0] || null"></label>
             <div class="actions">
-              <button class="primary" :disabled="busy || !!newGiver">保存</button>
-              <button type="button" :disabled="busy" @click="screen = giftFormReturn">戻る</button>
+              <button type="submit" class="primary" :disabled="busy || !!newGiver">保存</button>
+              <button v-if="screen === 'gift-new'" type="submit" value="continue" :disabled="busy || !!newGiver">保存して続けて記録</button>
+              <button type="button" :disabled="busy" @click="leaveGiftForm">戻る</button>
               <button v-if="screen === 'gift-edit' && gift.has_photo" type="button" :disabled="busy" @click="confirmAction('写真を削除しますか？', async () => { await api(giftPath + '/photo', 'DELETE'); gift = await api(giftPath) })">写真を削除</button>
             </div>
           </form>
