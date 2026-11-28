@@ -23,9 +23,11 @@ export async function prepareGiftPhoto(file) {
       canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
       context.drawImage(image, 0, 0, canvas.width, canvas.height)
       const blob = await new Promise(resolve => canvas.toBlob(resolve, file.type, quality))
+      // 元の形式を保ち、容量がサーバーの上限に収まったものだけを送信に使う。
       if (blob && blob.type === file.type && blob.size <= maxPhotoBytes) {
         return new File([blob], file.name, { type: file.type })
       }
+      // 画質の指定だけでは容量が下がらない形式もあるため、次の試行では寸法も小さくする。
       scale *= 0.75
     }
     throw new Error('Image exceeds upload limit')

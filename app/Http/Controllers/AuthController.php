@@ -37,7 +37,8 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['password' => 'パスワードは72バイト以内で入力してください。']);
         }
 
-        // 登録直後にログインさせ、セッションIDを更新する。
+        // パスワードはUserモデルのhashedキャストで保存時にハッシュ化する。
+        // 登録直後にログインさせ、ログイン前のセッションIDがそのまま使われないよう更新する。
         $user = User::create($data);
         Auth::login($user);
         $request->session()->regenerate();
@@ -69,6 +70,7 @@ class AuthController extends Controller
         if (strlen($credentials['password']) > 72 || ! Auth::attempt($credentials)) {
             throw ValidationException::withMessages(['email' => 'メールアドレスまたはパスワードが正しくありません。']);
         }
+        // 認証成功後は新しいセッションIDを使い、ブラウザに表示する会員情報を返す。
         $request->session()->regenerate();
 
         return $this->me($request);

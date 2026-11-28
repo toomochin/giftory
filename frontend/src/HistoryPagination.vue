@@ -12,6 +12,7 @@ const emit = defineEmits(['change'])
 const pages = computed(() => {
   if (props.last <= 7) return Array.from({ length: props.last }, (_, index) => index + 1)
 
+  // 最初と最後のページを除いた範囲で、現在位置が端に寄っても番号が少なくなりすぎないようにする。
   const first = Math.max(2, Math.min(props.current - 1, props.last - 4))
   const last = Math.min(props.last - 1, Math.max(props.current + 1, 5))
   return [

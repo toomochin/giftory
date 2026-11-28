@@ -49,6 +49,7 @@ class RecipientController extends Controller
         DB::transaction(function () use ($request, $recipient) {
             $locked = Recipient::query()->lockForUpdate()->findOrFail($recipient->id);
             $locked->checkOwner($request->user());
+            // 履歴や共有参加者を取り残さないよう、どちらかが存在する場合は409を返す。
             abort_if($locked->gifts()->exists() || $locked->members()->exists(), 409, '贈り物や参加者がいる相手は削除できません。');
             $locked->delete();
         });

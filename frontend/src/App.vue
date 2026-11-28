@@ -66,6 +66,7 @@ async function api(path, method = 'GET', data) {
   if (response.status === 204) return null
   const body = await response.json()
   if (!response.ok) {
+    // 入力エラーはLaravelの項目別メッセージをまとめて表示し、権限エラーなどはステータス別の案内を使う。
     const messages = Object.values(body.errors || {}).flat()
     const fallback = { 401: 'ログインしてください。', 403: 'この操作を行う権限がありません。', 404: '対象が見つかりません。', 419: '画面を再読み込みしてください。', 429: 'しばらく待ってからお試しください。' }
     throw Object.assign(new Error(messages[0] || body.message), {
@@ -84,6 +85,7 @@ async function run(action) {
     await action()
   } catch (error) {
     errors.value = error.messages || ['通信に失敗しました。もう一度お試しください。']
+    // セッション切れなどで401が返ったら、直前の会員・相手・記録の情報を画面の状態から外す。
     if (error.status === 401) {
       user.value = null
       recipient.value = null
@@ -120,6 +122,7 @@ async function openHistory(id = null, page = 1, direction = '') {
   screen.value = id === null ? 'all-history' : 'recipient'
 }
 
+// 詳細から履歴へ戻るときはページと区分を維持する。絞り込みボタンからは1ページ目を指定する。
 function refreshHistory(page = history.value?.current_page ?? 1, direction = historyDirection.value) {
   return openHistory(recipient.value?.id ?? null, page, direction)
 }
@@ -202,6 +205,7 @@ async function saveGift() {
   const dataFields = { ...draft.value }
   if (dataFields.direction === 'received') dataFields.giver = receivedFrom.value
   if (screen.value === 'gift-edit') {
+    // 記録の項目と写真は別のAPIで更新する。写真の差し替えが失敗した場合も、先に保存した項目は残る。
     await api(giftPath.value, 'PATCH', dataFields)
     if (photo.value) {
       // PHPが写真付きのmultipartリクエストを読めるよう、POSTで送りLaravel側でPUTとして扱う。
@@ -211,6 +215,7 @@ async function saveGift() {
     await openGift(gift.value.id)
     return
   }
+  // 新規登録は写真と項目を一度に送る。未入力だけを除外し、価格の0円はそのまま送信する。
   for (const [field, value] of Object.entries(dataFields)) {
     if (value !== null && value !== '') data.append(field, value)
   }
@@ -233,6 +238,7 @@ async function sharing() {
 async function issue() {
   const issued = await api(recipientPath.value + '/invitation', 'POST', { email: inviteEmail.value.trim() || null })
   invitation.value = issued
+  // メールの送信結果にかかわらず、発行されたトークンからコピー用リンクを作る。
   inviteLink.value = location.origin + '/#invite=' + encodeURIComponent(issued.token)
 }
 
@@ -244,6 +250,7 @@ function clearInvite() {
 
 async function accept() {
   const response = await api('/invitations/accept', 'POST', { token: token.value })
+  // 参加が確定してから、画面の状態とURLから使用済みトークンを取り除く。
   clearInvite()
   await openRecipient(response.recipient_id)
 }

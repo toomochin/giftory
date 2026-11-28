@@ -22,14 +22,15 @@ class Recipient extends Model
 
     public function checkAccess(User $user): void
     {
-        // 管理者と現在の参加者に閲覧を許可し、それ以外には相手の存在を知らせない。
+        // 現在の参加状況をDBで確認するため、共有を解除された会員は次のリクエストから閲覧できない。
+        // 管理者・参加者以外には、相手が存在しない場合と同じ404を返す。
         abort_unless($this->owner_id === $user->id || $this->members()->whereKey($user->id)->exists(), 404);
     }
 
     public function checkOwner(User $user): void
     {
         $this->checkAccess($user);
-        // 閲覧できる参加者にも、相手の設定を変更する権限は与えない。
+        // 閲覧は許可されるが管理操作は許可されない参加者に、403を返す。
         abort_unless($this->owner_id === $user->id, 403);
     }
 }

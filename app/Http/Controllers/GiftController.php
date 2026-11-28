@@ -50,7 +50,8 @@ class GiftController extends Controller
         $path = $file?->store('gift-photos', 'local');
         abort_if($file && ! $path, 500, '写真を保存できませんでした。');
 
-        // 写真を保存した後も、相手行をロックしてから現在の共有権限を確かめる。
+        // ファイルを先に保存し、書き込みに失敗した写真への参照がDBに残らないようにする。
+        // 保存中に共有が解除されることもあるため、相手行をロックして現在の権限を確かめ直す。
         try {
             $gift = DB::transaction(function () use ($request, $recipient, $data, $path) {
                 $locked = Recipient::query()->lockForUpdate()->findOrFail($recipient->id);
@@ -63,7 +64,7 @@ class GiftController extends Controller
                 return $gift;
             });
         } catch (\Throwable $error) {
-            // DBへの記録が失敗した場合は、先に保存した写真も片付ける。
+            // DBのロールバックではファイルが消えないため、先に保存した写真はここで削除する。
             $this->removeFile($path);
             throw $error;
         }
@@ -89,6 +90,7 @@ class GiftController extends Controller
 
     public function destroy(Request $request, Gift $gift)
     {
+        // DBから記録を削除した後で写真を削除する。DBの削除に失敗した場合は写真を残す。
         $path = $this->mutate($request, $gift, function (Gift $locked) {
             $locked->delete();
 
@@ -118,7 +120,8 @@ class GiftController extends Controller
         $path = $file->store('gift-photos', 'local');
         abort_unless($path, 500, '写真を保存できませんでした。');
 
-        // 新しい写真へのDB更新が済むまで旧写真を残す。更新に失敗した場合は新しい写真を削除する。
+        // 新しいファイルを保存した後、DBの参照先を差し替える。旧ファイルはDB更新の確定後に削除する。
+        // 更新に失敗した場合は新しいファイルを削除し、DBが参照している旧ファイルを残す。
         try {
             $old = $this->mutate($request, $gift, fn (Gift $locked) => $this->setPhoto($locked, $path));
         } catch (\Throwable $error) {
@@ -152,6 +155,7 @@ class GiftController extends Controller
 
     private function checkEditor(Request $request, Gift $gift, Recipient $recipient): void
     {
+        // 閲覧できることと、登録者として編集・削除できることを順番に確認する。
         $recipient->checkAccess($request->user());
         abort_unless($gift->created_by === $request->user()->id, 403);
     }
